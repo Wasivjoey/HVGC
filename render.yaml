@@ -31,11 +31,11 @@ services:
           property: connectionString
       - key: PYTHON_VERSION
         value: "3.12.7"
-      # Where uploaded programme documents & avatars are written. This persists
-      # only if you attach a disk (see the commented block below — requires a
-      # paid plan). On the free plan these files are cleared on each deploy.
-      - key: UPLOAD_PATH
-        value: /var/data/uploads
+      # Uploaded programme documents & avatars. By default they go to a writable
+      # (but ephemeral) folder, cleared on each deploy. To keep them, uncomment
+      # the disk block below AND set UPLOAD_PATH to /var/data/uploads.
+      # - key: UPLOAD_PATH
+      #   value: /var/data/uploads
 
       # ---- Optional: email for verification & password reset ----
       # Add these in the Render dashboard (or here) to enable real emails.
@@ -52,8 +52,8 @@ services:
       #   value: no-reply@yourchurch.org
 
     # ---- Optional persistent disk for uploaded files (paid plans only) ----
-    # Uncomment to keep uploaded documents/avatars across deploys. The mountPath
-    # must match the parent of UPLOAD_PATH above.
+    # Uncomment this AND the UPLOAD_PATH env var above to keep uploaded
+    # documents/avatars across deploys. mountPath must be the parent of UPLOAD_PATH.
     # disk:
     #   name: lineup-data
     #   mountPath: /var/data

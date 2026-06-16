@@ -15,6 +15,7 @@ thin wrapper translates those to Postgres (``%s`` placeholders, ``ON CONFLICT``,
 import os
 import re
 import sqlite3
+import time
 from datetime import datetime, date
 
 from werkzeug.security import generate_password_hash
@@ -215,14 +216,32 @@ def _columns(conn, table):
 _INIT_LOCK_KEY = 728114
 
 
+def _connect_with_retry(attempts=15, delay=2):
+    """Open a connection, retrying briefly if the database isn't ready yet."""
+    last = None
+    for i in range(attempts):
+        try:
+            return get_db()
+        except Exception as e:  # e.g. psycopg2.OperationalError on a cold DB
+            last = e
+            if i < attempts - 1:
+                print(f"[db] database not ready ({e}); retrying in {delay}s "
+                      f"({i + 1}/{attempts})", flush=True)
+                time.sleep(delay)
+    raise last
+
+
 def init_db():
     """Create tables (idempotent) and seed first-run data.
 
     Multiple gunicorn workers boot at once and each call this. On Postgres,
     concurrent ``CREATE TABLE`` statements can race, so we take a session-level
     advisory lock and let one worker initialise while the others wait.
+
+    On a fresh cloud deploy the database may not accept connections the instant
+    the web service starts, so we retry the first connection for a short while.
     """
-    conn = get_db()
+    conn = _connect_with_retry()
     locked = False
     try:
         if USE_PG:

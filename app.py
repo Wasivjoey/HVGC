@@ -30,7 +30,17 @@ def create_app():
     upload_path = os.environ.get(
         "UPLOAD_PATH", os.path.join(os.path.dirname(__file__), "uploads")
     )
-    os.makedirs(upload_path, exist_ok=True)
+    # Never let an unwritable UPLOAD_PATH crash startup (e.g. pointing at a disk
+    # mount that doesn't exist on the free plan). Fall back to a temp directory.
+    try:
+        os.makedirs(upload_path, exist_ok=True)
+    except OSError:
+        import tempfile
+        fallback = os.path.join(tempfile.gettempdir(), "hvgc-uploads")
+        os.makedirs(fallback, exist_ok=True)
+        print(f"[app] UPLOAD_PATH '{upload_path}' not writable; using {fallback}",
+              flush=True)
+        upload_path = fallback
     app.config["UPLOAD_PATH"] = upload_path
     app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16 MB cap per upload
 
