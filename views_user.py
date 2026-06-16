@@ -9,6 +9,8 @@ from flask import (
     current_app, send_from_directory, abort,
 )
 
+from werkzeug.security import generate_password_hash, check_password_hash
+
 from db import get_db, now_iso
 from helpers import (
     login_required, current_user, role_training_status, is_qualified, parse_video,
@@ -525,10 +527,25 @@ def profile():
     if request.method == "POST":
         name = request.form.get("name", "").strip()
         phone = request.form.get("phone", "").strip()
+        email = request.form.get("email", "").strip().lower()
+
+        # Validate the email change (must be a non-empty, unique address).
+        if not email or "@" not in email:
+            conn.close()
+            flash("A valid email is required.", "danger")
+            return redirect(url_for("user.profile"))
+        clash = conn.execute(
+            "SELECT id FROM users WHERE email = ? AND id <> ?", (email, user["id"])
+        ).fetchone()
+        if clash:
+            conn.close()
+            flash("That email is already in use by another account.", "danger")
+            return redirect(url_for("user.profile"))
+
         if name:
             conn.execute(
-                "UPDATE users SET name = ?, phone = ? WHERE id = ?",
-                (name, phone, user["id"]),
+                "UPDATE users SET name = ?, phone = ?, email = ? WHERE id = ?",
+                (name, phone, email, user["id"]),
             )
 
         # Remove existing avatar if requested.
@@ -567,3 +584,44 @@ def profile():
                             "qualified": done >= req})
     conn.close()
     return render_template("profile.html", role_status=role_status)
+
+
+@bp.route("/account/password", methods=["GET", "POST"])
+@login_required
+def change_password():
+    user = current_user()
+    # When an admin has reset the password, the user just authenticated with the
+    # temporary one, so we don't ask for the current password again.
+    forced = bool(user["must_change_password"])
+
+    if request.method == "POST":
+        current = request.form.get("current", "")
+        new = request.form.get("new", "")
+        confirm = request.form.get("confirm", "")
+
+        errors = []
+        if not forced and not check_password_hash(user["password_hash"], current):
+            errors.append("Your current password is incorrect.")
+        if len(new) < 6:
+            errors.append("New password must be at least 6 characters.")
+        if new != confirm:
+            errors.append("New passwords do not match.")
+        if not forced and new == current and not errors:
+            errors.append("New password must be different from the current one.")
+
+        if errors:
+            for e in errors:
+                flash(e, "danger")
+            return render_template("change_password.html", forced=forced)
+
+        conn = get_db()
+        conn.execute(
+            "UPDATE users SET password_hash = ?, must_change_password = 0 WHERE id = ?",
+            (generate_password_hash(new, method="pbkdf2:sha256"), user["id"]),
+        )
+        conn.commit()
+        conn.close()
+        flash("Your password has been updated.", "success")
+        return redirect(url_for("admin.dashboard" if user["is_admin"] else "user.dashboard"))
+
+    return render_template("change_password.html", forced=forced)

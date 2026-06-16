@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS users (
     avatar         TEXT,
     reset_token    TEXT,                        -- one-time password reset token
     reset_expires  TEXT,                        -- ISO expiry for the reset token
+    must_change_password INTEGER NOT NULL DEFAULT 0,  -- force a change at next login
     created_at     TEXT NOT NULL
 );
 
@@ -314,6 +315,9 @@ def _migrate(conn):
         conn.commit()
     if "reset_expires" not in ucols:
         conn.execute("ALTER TABLE users ADD COLUMN reset_expires TEXT")
+        conn.commit()
+    if "must_change_password" not in ucols:
+        conn.execute("ALTER TABLE users ADD COLUMN must_change_password INTEGER NOT NULL DEFAULT 0")
         conn.commit()
 
 

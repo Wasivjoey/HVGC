@@ -66,6 +66,35 @@
 
 <div class="grid grid-2">
   <div class="card">
+    <h3>✏️ Edit account details</h3>
+    <form method="post" action="{{ url_for('admin.update_user_details', user_id=u['id']) }}">
+      <label>Full name</label>
+      <input type="text" name="name" value="{{ u['name'] }}" required>
+      <label>Email</label>
+      <input type="email" name="email" value="{{ u['email'] }}" required>
+      <label>Phone</label>
+      <input type="tel" name="phone" value="{{ u['phone'] or '' }}">
+      <button class="btn btn-sm" style="margin-top:12px;">Save details</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h3>🔑 Reset password</h3>
+    <p class="muted" style="font-size:13px;margin-top:0;">Sets a temporary password. The user
+      is required to choose a new one at their next sign-in.
+      {% if u['must_change_password'] %}<br><span class="badge badge-amber">Change pending at next login</span>{% endif %}
+    </p>
+    <form method="post" action="{{ url_for('admin.reset_user_password', user_id=u['id']) }}"
+          onsubmit="return confirm('Reset this user\'s password?');">
+      <label>Temporary password <span class="muted">(leave blank to auto-generate)</span></label>
+      <input type="text" name="temp_password" placeholder="auto-generate if empty">
+      <button class="btn btn-sm btn-amber" style="margin-top:12px;">Reset password</button>
+    </form>
+  </div>
+</div>
+
+<div class="grid grid-2">
+  <div class="card">
     <h3>🎛️ Roles</h3>
     <p class="muted" style="font-size:13px;">Assigning a role auto-queues its required training. The user can only be scheduled once training is complete.</p>
     {% for rv in role_view %}

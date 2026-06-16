@@ -10,7 +10,7 @@ Production (cloud):
 
 import os
 
-from flask import Flask, redirect, url_for, session
+from flask import Flask, redirect, url_for, session, request
 
 from db import init_db
 from helpers import current_user
@@ -66,6 +66,17 @@ def create_app():
     @app.context_processor
     def inject_user():
         return {"current_user": current_user()}
+
+    # If an admin reset a user's password, force them to set a new one before
+    # they can use anything else.
+    @app.before_request
+    def _force_password_change():
+        user = current_user()
+        if user and user["must_change_password"]:
+            allowed = {"user.change_password", "auth.logout", "user.user_avatar",
+                       "static", "healthz"}
+            if request.endpoint not in allowed:
+                return redirect(url_for("user.change_password"))
 
     @app.template_filter("pretty_date")
     def pretty_date(value):

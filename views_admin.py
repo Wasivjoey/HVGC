@@ -1,11 +1,13 @@
 """Administrator blueprint: manage users, roles, trainings, services,
 scheduling, and swap approvals."""
 
+import secrets
 from datetime import date
 
 from flask import (
     Blueprint, render_template, request, redirect, url_for, flash,
 )
+from werkzeug.security import generate_password_hash
 
 from db import get_db, now_iso
 from helpers import (
@@ -209,6 +211,59 @@ def quick_approve(user_id):
     conn.close()
     flash("Account approved.", "success")
     return redirect(request.referrer or url_for("admin.dashboard"))
+
+
+@bp.route("/users/<int:user_id>/details", methods=["POST"])
+@admin_required
+def update_user_details(user_id):
+    conn = get_db()
+    name = request.form.get("name", "").strip()
+    email = request.form.get("email", "").strip().lower()
+    phone = request.form.get("phone", "").strip()
+    if not name or not email or "@" not in email:
+        flash("Name and a valid email are required.", "danger")
+    elif conn.execute(
+        "SELECT id FROM users WHERE email = ? AND id <> ?", (email, user_id)
+    ).fetchone():
+        flash("That email is already in use by another account.", "danger")
+    else:
+        conn.execute(
+            "UPDATE users SET name = ?, email = ?, phone = ? WHERE id = ?",
+            (name, email, phone, user_id),
+        )
+        conn.commit()
+        flash("Account details updated.", "success")
+    conn.close()
+    return redirect(url_for("admin.user_detail", user_id=user_id))
+
+
+@bp.route("/users/<int:user_id>/reset-password", methods=["POST"])
+@admin_required
+def reset_user_password(user_id):
+    conn = get_db()
+    u = conn.execute("SELECT username FROM users WHERE id = ?", (user_id,)).fetchone()
+    if u is None:
+        conn.close()
+        flash("User not found.", "danger")
+        return redirect(url_for("admin.users"))
+
+    temp = request.form.get("temp_password", "").strip()
+    if not temp:
+        temp = secrets.token_urlsafe(6)          # auto-generate if none supplied
+    elif len(temp) < 6:
+        conn.close()
+        flash("Temporary password must be at least 6 characters.", "danger")
+        return redirect(url_for("admin.user_detail", user_id=user_id))
+
+    conn.execute(
+        "UPDATE users SET password_hash = ?, must_change_password = 1 WHERE id = ?",
+        (generate_password_hash(temp, method="pbkdf2:sha256"), user_id),
+    )
+    conn.commit()
+    conn.close()
+    flash(f"Password reset for @{u['username']}. Temporary password: {temp} — "
+          "they'll be required to change it at next sign-in.", "success")
+    return redirect(url_for("admin.user_detail", user_id=user_id))
 
 
 @bp.route("/users/<int:user_id>/flags", methods=["POST"])
