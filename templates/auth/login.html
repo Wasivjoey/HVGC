@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Sign in · HVGC LINEUP{% endblock %}
+{% block auth_body %}
+<div class="auth-card">
+  <img class="logo-big-img" src="{{ url_for('static', filename='logo.png') }}" alt="HVGC">
+  <h1>HVGC LINEUP</h1>
+  <p class="sub">Sign in to manage your serving schedule</p>
+  <form method="post">
+    <label for="identifier">Username or email</label>
+    <input type="text" id="identifier" name="identifier" value="{{ identifier or '' }}" required autofocus>
+    <label for="password">Password</label>
+    <input type="password" id="password" name="password" required>
+    <button type="submit" class="btn btn-block" style="margin-top:18px;">Sign in</button>
+  </form>
+  <p class="auth-alt" style="margin-top:10px;"><a href="{{ url_for('auth.forgot_password') }}">Forgot your password?</a></p>
+
+  {% if unverified %}
+  <form method="post" action="{{ url_for('auth.resend_verification') }}" class="resend-form">
+    <input type="hidden" name="identifier" value="{{ identifier or '' }}">
+    <button class="btn btn-ghost btn-block btn-sm">Resend verification email</button>
+  </form>
+  {% endif %}
+
+  <p class="auth-alt">New here? <a href="{{ url_for('auth.register') }}">Create an account</a></p>
+  <div class="hint">
+    <strong>Demo admin:</strong> <code>admin</code> or admin@avteam.app · admin123
+  </div>
+</div>
+{% endblock %}

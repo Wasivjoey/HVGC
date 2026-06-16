@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Training · HVGC LINEUP{% endblock %}
+{% block body %}
+<div class="page-head">
+  <div>
+    <h1>My Training</h1>
+    <p>Complete the required training for a role before you can be scheduled to serve in it.</p>
+  </div>
+</div>
+
+<div class="card table-card">
+  {% if assigned %}
+  <table>
+    <thead><tr><th>Training</th><th>Role</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    {% for t in assigned %}
+      <tr>
+        <td><strong>{{ t['title'] }}</strong><br><span class="muted">{{ t['description'] or '' }}</span></td>
+        <td>{% if t['role_name'] %}<span class="badge badge-gray">{{ t['role_name'] }}</span>{% else %}—{% endif %}</td>
+        <td>
+          {% if t['status'] == 'completed' %}
+            <span class="badge badge-green">✓ Completed</span>
+          {% else %}
+            <span class="badge badge-amber">To do</span>
+          {% endif %}
+        </td>
+        <td><a href="{{ url_for('user.training_detail', training_id=t['training_id']) }}" class="btn btn-sm {{ 'btn-ghost' if t['status']=='completed' else '' }}">
+          {{ 'Review' if t['status']=='completed' else 'Start' }}</a></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <div class="empty">No training assigned yet. Once an admin assigns you a role, its required training shows up here.</div>
+  {% endif %}
+</div>
+{% endblock %}

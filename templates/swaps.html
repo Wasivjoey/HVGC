@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Role Swaps · HVGC LINEUP{% endblock %}
+{% block body %}
+<div class="page-head">
+  <div>
+    <h1>Role Swaps</h1>
+    <p>Hand off a slot you can't cover, or pick up one a teammate needs covered.</p>
+  </div>
+</div>
+
+<div class="grid grid-2">
+  <div class="card">
+    <h3>🙋 Swaps you can cover</h3>
+    {% if coverable %}
+      {% for sw in coverable %}
+      <div class="list-item">
+        <div>
+          <strong>{{ sw['role_name'] }}</strong> · {{ sw['service_title'] }}<br>
+          <span class="meta">{{ sw['service_date']|pretty_date }} · from {{ sw['requester_name'] }}</span>
+          {% if sw['reason'] %}<br><span class="tag">“{{ sw['reason'] }}”</span>{% endif %}
+        </div>
+        <form method="post" action="{{ url_for('user.volunteer_swap', swap_id=sw['id']) }}" class="inline-form">
+          <button class="btn btn-sm btn-green">Volunteer</button>
+        </form>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty">Nothing you're qualified to cover right now.</div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <h3>📤 Your swap requests</h3>
+    {% if my_requests %}
+      {% for sw in my_requests %}
+      <div class="list-item">
+        <div>
+          <strong>{{ sw['role_name'] }}</strong> · {{ sw['service_title'] }}<br>
+          <span class="meta">{{ sw['service_date']|pretty_date }}</span>
+          {% if sw['covered_name'] %}<br><span class="tag">Volunteer: {{ sw['covered_name'] }}</span>{% endif %}
+        </div>
+        <div class="row-actions">
+          {% if sw['status'] == 'open' %}<span class="badge badge-amber">Open</span>
+          {% elif sw['status'] == 'volunteered' %}<span class="badge badge-blue">Volunteer found</span>
+          {% elif sw['status'] == 'approved' %}<span class="badge badge-green">Approved</span>
+          {% elif sw['status'] == 'rejected' %}<span class="badge badge-red">Rejected</span>
+          {% else %}<span class="badge badge-gray">{{ sw['status']|capitalize }}</span>{% endif %}
+          {% if sw['status'] in ['open','volunteered'] %}
+          <form method="post" action="{{ url_for('user.cancel_swap', swap_id=sw['id']) }}" class="inline-form">
+            <button class="btn btn-sm btn-ghost">Cancel</button>
+          </form>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty">You haven't requested any swaps. Open a service to request one.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

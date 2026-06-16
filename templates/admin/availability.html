@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Availability Grid · Admin{% endblock %}
+{% block body %}
+<div class="page-head">
+  <div>
+    <h1>Availability Grid</h1>
+    <p>Who's available for each upcoming service date.</p>
+  </div>
+</div>
+
+<div class="card grid-matrix">
+  {% if services %}
+  <table class="matrix">
+    <thead>
+      <tr>
+        <th>Volunteer</th>
+        {% for s in services %}
+        <th title="{{ s['title'] }}">{{ s['service_date']|pretty_date }}</th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for u in users %}
+      <tr>
+        <td>{{ u['name'] }}</td>
+        {% for s in services %}
+          {% set st = avail.get(u['id'], {}).get(s['service_date']) %}
+          <td>
+            {% if st == 'available' %}<span class="dot dot-green" title="Available"></span>
+            {% elif st == 'unavailable' %}<span class="dot dot-red" title="Unavailable"></span>
+            {% else %}<span class="dot dot-gray" title="Not marked"></span>{% endif %}
+          </td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="muted" style="margin-top:14px;">
+    <span class="dot dot-green"></span> available &nbsp;
+    <span class="dot dot-red"></span> unavailable &nbsp;
+    <span class="dot dot-gray"></span> not marked
+  </p>
+  {% else %}
+    <div class="empty">No upcoming services to show availability for.</div>
+  {% endif %}
+</div>
+{% endblock %}

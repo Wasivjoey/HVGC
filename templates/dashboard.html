@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Dashboard · HVGC LINEUP{% endblock %}
+{% block body %}
+<div class="page-head">
+  <div>
+    <h1>Hi, {{ current_user['name'].split()[0] }} 👋</h1>
+    <p>Here's what's coming up for you on the AV team.</p>
+  </div>
+  <a href="{{ url_for('user.availability') }}" class="btn">Update availability</a>
+</div>
+
+{% if pending_training %}
+<div class="card" style="border-left:4px solid var(--amber);">
+  <h3>⚠️ Training to complete before you can serve</h3>
+  {% for t in pending_training %}
+  <div class="list-item">
+    <div>
+      <strong>{{ t['title'] }}</strong>
+      {% if t['role_name'] %}<span class="badge badge-gray">{{ t['role_name'] }}</span>{% endif %}
+    </div>
+    <a href="{{ url_for('user.training_detail', training_id=t['training_id']) }}" class="btn btn-sm">Start</a>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="grid grid-2">
+  <div class="card">
+    <h3>📅 Your upcoming assignments</h3>
+    {% if upcoming %}
+      {% for a in upcoming %}
+      <div class="list-item">
+        <div>
+          <strong>{{ a['role_name'] }}</strong> · {{ a['service_title'] }}<br>
+          <span class="meta">{{ a['service_date']|pretty_date }}{% if a['start_time'] %} · {{ a['start_time'] }}{% endif %}</span>
+        </div>
+        <div class="row-actions">
+          {% if a['status'] == 'confirmed' %}<span class="badge badge-green">Confirmed</span>
+          {% elif a['status'] == 'declined' %}<span class="badge badge-red">Declined</span>
+          {% else %}<span class="badge badge-amber">Scheduled</span>{% endif %}
+          <a href="{{ url_for('user.service_detail', service_id=a['service_id']) }}" class="btn btn-sm btn-ghost">View</a>
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty">No upcoming assignments yet.</div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <h3>🎛️ Your roles &amp; qualification</h3>
+    {% if role_status %}
+      {% for rs in role_status %}
+      <div class="list-item">
+        <div><strong>{{ rs['role']['name'] }}</strong></div>
+        <div>
+          {% if rs['qualified'] %}
+            <span class="badge badge-green">Qualified</span>
+          {% else %}
+            <span class="badge badge-amber">Training {{ rs['completed'] }}/{{ rs['required'] }}</span>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty">No roles assigned yet. An admin will assign your roles.</div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <h3>🔁 Swaps you can cover</h3>
+  {% if coverable %}
+    {% for sw in coverable %}
+    <div class="list-item">
+      <div>
+        <strong>{{ sw['role_name'] }}</strong> · {{ sw['service_title'] }}<br>
+        <span class="meta">{{ sw['service_date']|pretty_date }} · requested by {{ sw['requester_name'] }}</span>
+      </div>
+      <form method="post" action="{{ url_for('user.volunteer_swap', swap_id=sw['id']) }}" class="inline-form">
+        <button class="btn btn-sm btn-green">Volunteer to cover</button>
+      </form>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="empty">No open swaps you're qualified to cover right now.</div>
+  {% endif %}
+</div>
+{% endblock %}

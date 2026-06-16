@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}{{ service['title'] }} · HVGC LINEUP{% endblock %}
+{% block body %}
+<div class="page-head">
+  <div>
+    <h1>{{ service['title'] }}</h1>
+    <p>{{ service['service_date']|pretty_date }}{% if service['start_time'] %} · {{ service['start_time'] }}{% endif %}{% if service['location'] %} · {{ service['location'] }}{% endif %}</p>
+  </div>
+  <a href="{{ url_for('user.services') }}" class="btn btn-ghost">← All services</a>
+</div>
+
+{% if service['notes'] %}
+<div class="card" style="border-left:4px solid var(--brand);">
+  <strong>Service notes:</strong> <span class="note-body">{{ service['notes'] }}</span>
+</div>
+{% endif %}
+
+{% if service['doc_filename'] %}
+<div class="card" style="border-left:4px solid var(--green);">
+  📄 <strong>Programme flow:</strong>
+  <a href="{{ url_for('user.service_document', service_id=service['id']) }}" target="_blank" rel="noopener">{{ service['doc_original'] }}</a>
+</div>
+{% endif %}
+
+{% if my_assignments %}
+<div class="card">
+  <h3>Your role{{ 's' if my_assignments|length > 1 }} this service</h3>
+  {% for a in my_assignments %}
+  <div class="list-item">
+    <div>
+      <strong>{{ a['role_name'] }}</strong>
+      {% if a['status'] == 'confirmed' %}<span class="badge badge-green">Confirmed</span>
+      {% elif a['status'] == 'declined' %}<span class="badge badge-red">Declined</span>
+      {% else %}<span class="badge badge-amber">Awaiting your confirmation</span>{% endif %}
+    </div>
+    <div class="row-actions">
+      <form method="post" action="{{ url_for('user.respond_assignment', assignment_id=a['id']) }}" class="inline-form">
+        <input type="hidden" name="decision" value="confirmed">
+        <button class="btn btn-sm btn-green">Confirm</button>
+      </form>
+      <form method="post" action="{{ url_for('user.respond_assignment', assignment_id=a['id']) }}" class="inline-form">
+        <input type="hidden" name="decision" value="declined">
+        <button class="btn btn-sm btn-ghost">Decline</button>
+      </form>
+      <details class="inline-edit">
+        <summary>Request swap</summary>
+        <form method="post" action="{{ url_for('user.request_swap', assignment_id=a['id']) }}">
+          <input type="text" name="reason" placeholder="Reason (optional)">
+          <button class="btn btn-sm btn-amber" style="margin-top:8px;">Post swap request</button>
+        </form>
+      </details>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="grid grid-2">
+  <div class="card">
+    <h3>👥 Roster</h3>
+    {% if roster %}
+      {% for a in roster %}
+      <div class="list-item">
+        <div><strong>{{ a['role_name'] }}</strong><br><span class="meta">{{ a['user_name'] }}</span></div>
+        {% if a['status'] == 'confirmed' %}<span class="badge badge-green">Confirmed</span>
+        {% elif a['status'] == 'declined' %}<span class="badge badge-red">Declined</span>
+        {% else %}<span class="badge badge-amber">Scheduled</span>{% endif %}
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty">No one is scheduled yet.</div>
+    {% endif %}
+    {% if swaps %}
+    <div class="divider"></div>
+    <p class="muted" style="font-size:13px;">🔁 {{ swaps|length }} open swap request{{ 's' if swaps|length > 1 }} on this service.</p>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <h3>📝 Notes on this service</h3>
+    <form method="post" action="{{ url_for('user.add_note', service_id=service['id']) }}">
+      <textarea name="body" placeholder="Add a note about this service time…" required></textarea>
+      <button class="btn btn-sm" style="margin-top:8px;">Add note</button>
+    </form>
+    <div class="divider"></div>
+    {% if notes %}
+      {% for n in notes %}
+      <div class="list-item">
+        <div>
+          <span class="note-body">{{ n['body'] }}</span><br>
+          <span class="meta">{{ n['author'] }} · {{ n['created_at']|pretty_dt }}</span>
+        </div>
+        {% if n['user_id'] == current_user['id'] %}
+        <form method="post" action="{{ url_for('user.delete_note', service_id=service['id'], note_id=n['id']) }}" class="inline-form">
+          <button class="btn btn-sm btn-ghost">✕</button>
+        </form>
+        {% endif %}
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty">No notes yet — be the first.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

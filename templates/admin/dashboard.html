@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}Admin · HVGC LINEUP{% endblock %}
+{% block body %}
+<div class="page-head">
+  <div>
+    <h1>Admin Home</h1>
+    <p>Overview of your AV team, schedule, and pending requests.</p>
+  </div>
+  <a href="{{ url_for('admin.services') }}" class="btn">+ New service</a>
+</div>
+
+<div class="grid grid-4">
+  <div class="stat"><div class="n">{{ stats['users'] }}</div><div class="l">People</div></div>
+  <div class="stat"><div class="n">{{ stats['roles'] }}</div><div class="l">Roles</div></div>
+  <div class="stat"><div class="n">{{ stats['upcoming'] }}</div><div class="l">Upcoming services</div></div>
+  <div class="stat"><div class="n">{{ stats['trainings'] }}</div><div class="l">Trainings</div></div>
+  <div class="stat"><div class="n">{{ stats['open_swaps'] }}</div><div class="l">Open swaps</div></div>
+  <div class="stat"><div class="n">{{ stats['pending_training'] }}</div><div class="l">Training in progress</div></div>
+  <div class="stat"><div class="n">{{ stats['pending_approvals'] }}</div><div class="l">Pending approvals</div></div>
+</div>
+
+{% if pending %}
+<div class="card" style="border-left:4px solid var(--amber);margin-top:18px;">
+  <h3>🆕 New sign-ups awaiting approval</h3>
+  {% for u in pending %}
+  <div class="list-item">
+    <div>
+      <strong>{{ u['name'] }}</strong> <span class="muted">@{{ u['username'] }}</span><br>
+      <span class="meta">{{ u['email'] }}
+        {% if u['email_verified'] %}<span class="badge badge-green">Email verified</span>
+        {% else %}<span class="badge badge-amber">Email not verified</span>{% endif %}
+      </span>
+    </div>
+    <div class="row-actions">
+      <a href="{{ url_for('admin.user_detail', user_id=u['id']) }}" class="btn btn-sm btn-ghost">Review</a>
+      <form method="post" action="{{ url_for('admin.quick_approve', user_id=u['id']) }}" class="inline-form">
+        <button class="btn btn-sm btn-green">Approve</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="grid grid-2" style="margin-top:18px;">
+  <div class="card">
+    <h3>🗓️ Next services</h3>
+    {% if upcoming %}
+      {% for s in upcoming %}
+      <div class="list-item">
+        <div><strong>{{ s['title'] }}</strong><br><span class="meta">{{ s['service_date']|pretty_date }}{% if s['start_time'] %} · {{ s['start_time'] }}{% endif %}</span></div>
+        <div class="row-actions">
+          <span class="badge badge-blue">{{ s['slots'] }} scheduled</span>
+          <a href="{{ url_for('admin.schedule', service_id=s['id']) }}" class="btn btn-sm">Schedule</a>
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty">No upcoming services. <a href="{{ url_for('admin.services') }}">Create one →</a></div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <h3>🔁 Swaps needing attention</h3>
+    {% if swaps %}
+      {% for sw in swaps %}
+      <div class="list-item">
+        <div>
+          <strong>{{ sw['role_name'] }}</strong> · {{ sw['service_title'] }}<br>
+          <span class="meta">{{ sw['service_date']|pretty_date }} · {{ sw['requester_name'] }}
+            {% if sw['covered_name'] %}→ {{ sw['covered_name'] }}{% endif %}</span>
+        </div>
+        <div class="row-actions">
+          {% if sw['status'] == 'volunteered' %}<span class="badge badge-blue">Ready to approve</span>
+          {% else %}<span class="badge badge-amber">Awaiting volunteer</span>{% endif %}
+          <a href="{{ url_for('admin.swaps') }}" class="btn btn-sm btn-ghost">Review</a>
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty">No pending swaps. 🎉</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

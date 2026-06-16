@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Create account · HVGC LINEUP{% endblock %}
+{% block auth_body %}
+<div class="auth-card">
+  <img class="logo-big-img" src="{{ url_for('static', filename='logo.png') }}" alt="HVGC">
+  <h1>Create your account</h1>
+  <p class="sub">Join the audio / visual serving team</p>
+  <form method="post">
+    <label for="name">Full name</label>
+    <input type="text" id="name" name="name" value="{{ name or '' }}" required autofocus>
+    <label for="username">Username</label>
+    <input type="text" id="username" name="username" value="{{ username or '' }}"
+           pattern="[A-Za-z0-9_]{3,20}" title="3-20 letters, numbers, or underscore" required>
+    <label for="email">Email</label>
+    <input type="email" id="email" name="email" value="{{ email or '' }}" required>
+    <label for="phone">Phone <span class="muted">(optional)</span></label>
+    <input type="tel" id="phone" name="phone" value="{{ phone or '' }}">
+    <div class="form-row">
+      <div>
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required>
+      </div>
+      <div>
+        <label for="confirm">Confirm</label>
+        <input type="password" id="confirm" name="confirm" required>
+      </div>
+    </div>
+    <button type="submit" class="btn btn-block" style="margin-top:18px;">Create account</button>
+  </form>
+  <p class="auth-alt">Already have an account? <a href="{{ url_for('auth.login') }}">Sign in</a></p>
+</div>
+{% endblock %}

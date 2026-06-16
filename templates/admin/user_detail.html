@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block title %}{{ u['name'] }} · Admin{% endblock %}
+{% block body %}
+<div class="page-head">
+  <div>
+    <h1>{{ u['name'] }}</h1>
+    <p>@{{ u['username'] }} · {{ u['email'] }}{% if u['phone'] %} · {{ u['phone'] }}{% endif %}</p>
+  </div>
+  <a href="{{ url_for('admin.users') }}" class="btn btn-ghost">← All people</a>
+</div>
+
+{% if not u['approved'] %}
+<div class="card" style="border-left:4px solid var(--amber);">
+  <h3>🆕 Pending approval</h3>
+  <p class="muted" style="font-size:13px;margin-top:0;">This account cannot sign in until you approve it.
+    {% if not u['email_verified'] %} The email is not yet verified — you can wait for the user, or mark it verified manually below.{% endif %}</p>
+  <form method="post" action="{{ url_for('admin.update_user_flags', user_id=u['id']) }}" class="inline-form">
+    <input type="hidden" name="action" value="approve">
+    <button class="btn btn-green">✓ Approve account</button>
+  </form>
+</div>
+{% endif %}
+
+<div class="card">
+  <h3>Account</h3>
+  <div class="row-actions">
+    {% if u['is_admin'] %}<span class="badge badge-blue">Administrator</span>{% else %}<span class="badge badge-gray">Volunteer</span>{% endif %}
+    {% if u['approved'] %}<span class="badge badge-green">Approved</span>{% else %}<span class="badge badge-amber">Awaiting approval</span>{% endif %}
+    {% if u['email_verified'] %}<span class="badge badge-green">Email verified</span>{% else %}<span class="badge badge-red">Email not verified</span>{% endif %}
+    {% if u['is_active'] %}<span class="badge badge-green">Active</span>{% else %}<span class="badge badge-red">Inactive</span>{% endif %}
+  </div>
+  <div class="divider"></div>
+  <div class="row-actions">
+    <form method="post" action="{{ url_for('admin.update_user_flags', user_id=u['id']) }}" class="inline-form">
+      <input type="hidden" name="action" value="{{ 'revoke_admin' if u['is_admin'] else 'make_admin' }}">
+      <button class="btn btn-sm btn-ghost">{{ 'Revoke admin' if u['is_admin'] else 'Make admin' }}</button>
+    </form>
+    {% if u['approved'] %}
+    <form method="post" action="{{ url_for('admin.update_user_flags', user_id=u['id']) }}" class="inline-form">
+      <input type="hidden" name="action" value="unapprove">
+      <button class="btn btn-sm btn-ghost">Revoke approval</button>
+    </form>
+    {% else %}
+    <form method="post" action="{{ url_for('admin.update_user_flags', user_id=u['id']) }}" class="inline-form">
+      <input type="hidden" name="action" value="approve">
+      <button class="btn btn-sm btn-green">Approve</button>
+    </form>
+    {% endif %}
+    {% if not u['email_verified'] %}
+    <form method="post" action="{{ url_for('admin.update_user_flags', user_id=u['id']) }}" class="inline-form">
+      <input type="hidden" name="action" value="verify_email">
+      <button class="btn btn-sm btn-ghost">Mark email verified</button>
+    </form>
+    {% endif %}
+    <form method="post" action="{{ url_for('admin.update_user_flags', user_id=u['id']) }}" class="inline-form">
+      <input type="hidden" name="action" value="{{ 'activate' if not u['is_active'] else 'deactivate' }}">
+      <button class="btn btn-sm {{ 'btn-green' if not u['is_active'] else 'btn-red' }}">{{ 'Reactivate' if not u['is_active'] else 'Deactivate' }}</button>
+    </form>
+  </div>
+  {% if not u['email_verified'] and u['verify_token'] %}
+  <div class="divider"></div>
+  <p class="tag" style="margin:0;">Verification link to share with the user:</p>
+  <p style="margin:4px 0 0;word-break:break-all;"><a href="{{ url_for('auth.verify_email', token=u['verify_token'], _external=True) }}">{{ url_for('auth.verify_email', token=u['verify_token'], _external=True) }}</a></p>
+  {% endif %}
+</div>
+
+<div class="grid grid-2">
+  <div class="card">
+    <h3>🎛️ Roles</h3>
+    <p class="muted" style="font-size:13px;">Assigning a role auto-queues its required training. The user can only be scheduled once training is complete.</p>
+    {% for rv in role_view %}
+    <div class="list-item">
+      <div>
+        <strong>{{ rv['role']['name'] }}</strong>
+        {% if rv['assigned'] %}
+          {% if rv['qualified'] %}<span class="badge badge-green">Qualified</span>
+          {% else %}<span class="badge badge-amber">Training {{ rv['completed'] }}/{{ rv['required'] }}</span>{% endif %}
+        {% endif %}
+      </div>
+      <form method="post" action="{{ url_for('admin.update_user_roles', user_id=u['id']) }}" class="inline-form">
+        <input type="hidden" name="role_id" value="{{ rv['role']['id'] }}">
+        {% if rv['assigned'] %}
+          <input type="hidden" name="action" value="remove">
+          <button class="btn btn-sm btn-ghost">Remove</button>
+        {% else %}
+          <input type="hidden" name="action" value="assign">
+          <button class="btn btn-sm">Assign</button>
+        {% endif %}
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="card">
+    <h3>🎓 Training</h3>
+    {% for tv in training_view %}
+    <div class="list-item">
+      <div>
+        <strong>{{ tv['t']['title'] }}</strong>
+        {% if tv['t']['role_name'] %}<span class="badge badge-gray">{{ tv['t']['role_name'] }}</span>{% endif %}<br>
+        {% if tv['assigned'] %}
+          {% if tv['status'] == 'completed' %}<span class="badge badge-green">Completed</span>
+          {% else %}<span class="badge badge-amber">Assigned</span>{% endif %}
+        {% else %}<span class="meta">Not assigned</span>{% endif %}
+      </div>
+      <form method="post" action="{{ url_for('admin.update_user_training', user_id=u['id']) }}" class="row-actions">
+        <input type="hidden" name="training_id" value="{{ tv['t']['id'] }}">
+        {% if not tv['assigned'] %}
+          <button class="btn btn-sm" name="action" value="assign">Assign</button>
+        {% elif tv['status'] != 'completed' %}
+          <button class="btn btn-sm btn-green" name="action" value="complete">Mark done</button>
+          <button class="btn btn-sm btn-ghost" name="action" value="remove">Remove</button>
+        {% else %}
+          <button class="btn btn-sm btn-ghost" name="action" value="reset">Reset</button>
+        {% endif %}
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

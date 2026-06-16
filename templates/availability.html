@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}My Availability · HVGC LINEUP{% endblock %}
+{% block body %}
+<div class="page-head">
+  <div>
+    <h1>My Availability</h1>
+    <p>Let the schedulers know which dates you can and can't serve.</p>
+  </div>
+</div>
+
+<div class="grid grid-2">
+  <div class="card">
+    <h3>Set availability for a date or range</h3>
+    <form method="post">
+      <label>I am…</label>
+      <div class="toggle-row">
+        <label class="toggle">
+          <input type="radio" name="status" value="available" checked>
+          <span>✅ Available</span>
+        </label>
+        <label class="toggle">
+          <input type="radio" name="status" value="unavailable">
+          <span>⛔ Unavailable</span>
+        </label>
+      </div>
+      <div class="form-row">
+        <div>
+          <label for="start">From date</label>
+          <input type="date" id="start" name="start" min="{{ today }}" required>
+        </div>
+        <div>
+          <label for="end">To date <span class="muted">(optional)</span></label>
+          <input type="date" id="end" name="end" min="{{ today }}">
+        </div>
+      </div>
+      <p class="tag">Leave “To date” blank to mark a single day. A range marks every day in it.</p>
+      <label for="note">Note <span class="muted">(optional)</span></label>
+      <input type="text" id="note" name="note" placeholder="e.g. Out of town / available after 11am">
+      <button class="btn" style="margin-top:16px;">Save availability</button>
+    </form>
+
+    <div class="divider"></div>
+    <h3>Quick mark upcoming Sundays available</h3>
+    <div class="pill-row">
+      {% for s in sundays %}
+      <form method="post" class="inline-form">
+        <input type="hidden" name="start" value="{{ s['day'] }}">
+        <input type="hidden" name="status" value="available">
+        <button class="btn btn-sm {{ 'btn-green' if s['marked'] else 'btn-ghost' }}">
+          {{ s['day']|pretty_date }}
+        </button>
+      </form>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Your marked dates</h3>
+    {% if entries %}
+    <table>
+      <thead><tr><th>Date</th><th>Status</th><th>Note</th><th></th></tr></thead>
+      <tbody>
+      {% for e in entries %}
+        <tr>
+          <td>{{ e['day']|pretty_date }}</td>
+          <td>
+            {% if e['status'] == 'available' %}<span class="badge badge-green">Available</span>
+            {% else %}<span class="badge badge-red">Unavailable</span>{% endif %}
+          </td>
+          <td class="muted">{{ e['note'] or '—' }}</td>
+          <td>
+            <form method="post" action="{{ url_for('user.delete_availability', entry_id=e['id']) }}" class="inline-form">
+              <button class="btn btn-sm btn-ghost">Remove</button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+      <div class="empty">You haven't marked any dates yet.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

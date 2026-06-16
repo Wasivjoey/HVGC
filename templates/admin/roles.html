@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Roles · Admin{% endblock %}
+{% block body %}
+<div class="page-head">
+  <div>
+    <h1>Roles</h1>
+    <p>Define the serving positions on your AV team.</p>
+  </div>
+</div>
+
+<div class="grid grid-2">
+  <div>
+    {% for rv in role_view %}
+    <div class="card">
+      <div class="list-item" style="border:none;padding:0;">
+        <div>
+          <strong>{{ rv['r']['name'] }}</strong><br>
+          <span class="meta">{{ rv['r']['description'] or '' }}</span>
+        </div>
+        <div class="pill-row">
+          <span class="badge badge-gray">{{ rv['people'] }} assigned</span>
+          <span class="badge badge-green">{{ rv['qualified'] }} qualified</span>
+        </div>
+      </div>
+      <details class="inline-edit" style="margin-top:10px;">
+        <summary>Edit / delete</summary>
+        <form method="post" action="{{ url_for('admin.edit_role', role_id=rv['r']['id']) }}">
+          <label>Name</label>
+          <input type="text" name="name" value="{{ rv['r']['name'] }}" required>
+          <label>Description</label>
+          <input type="text" name="description" value="{{ rv['r']['description'] or '' }}">
+          <button class="btn btn-sm" style="margin-top:10px;">Save</button>
+        </form>
+        <form method="post" action="{{ url_for('admin.delete_role', role_id=rv['r']['id']) }}" onsubmit="return confirm('Delete this role? Assignments using it will be removed.');">
+          <button class="btn btn-sm btn-red" style="margin-top:8px;">Delete role</button>
+        </form>
+      </details>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="card" style="align-self:start;">
+    <h3>+ New role</h3>
+    <form method="post">
+      <label for="name">Role name</label>
+      <input type="text" id="name" name="name" placeholder="e.g. Stage Manager" required>
+      <label for="description">Description</label>
+      <textarea id="description" name="description" placeholder="What this role does"></textarea>
+      <button class="btn" style="margin-top:14px;">Create role</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

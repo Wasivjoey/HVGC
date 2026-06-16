@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}HVGC LINEUP{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="icon" href="{{ url_for('static', filename='logo.png') }}">
+</head>
+<body>
+{% if current_user %}
+<header class="topbar no-print">
+  <button class="hamburger" onclick="document.body.classList.toggle('nav-open')" aria-label="Toggle menu">
+    <span></span><span></span><span></span>
+  </button>
+  <img class="topbar-logo" src="{{ url_for('static', filename='logo.png') }}" alt="">
+  <strong>HVGC LINEUP</strong>
+</header>
+<div class="nav-overlay" onclick="document.body.classList.remove('nav-open')"></div>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">
+      <img class="logo-img" src="{{ url_for('static', filename='logo.png') }}" alt="HVGC">
+      <div>
+        <strong>HVGC</strong>
+        <small>LINEUP</small>
+      </div>
+    </div>
+
+    <nav>
+      <p class="nav-label">Volunteer</p>
+      <a href="{{ url_for('user.dashboard') }}" class="{{ 'active' if request.endpoint == 'user.dashboard' }}">📊 Dashboard</a>
+      <a href="{{ url_for('user.availability') }}" class="{{ 'active' if request.endpoint == 'user.availability' }}">📅 My Availability</a>
+      <a href="{{ url_for('user.services') }}" class="{{ 'active' if request.endpoint in ['user.services','user.service_detail'] }}">⛪ Services</a>
+      <a href="{{ url_for('user.swaps') }}" class="{{ 'active' if request.endpoint == 'user.swaps' }}">🔁 Role Swaps</a>
+      <a href="{{ url_for('user.trainings') }}" class="{{ 'active' if request.endpoint in ['user.trainings','user.training_detail'] }}">🎓 Training</a>
+      <a href="{{ url_for('user.profile') }}" class="{{ 'active' if request.endpoint == 'user.profile' }}">👤 My Profile</a>
+      <a href="{{ url_for('user.manual') }}" class="{{ 'active' if request.endpoint == 'user.manual' }}">📖 User Manual</a>
+
+      {% if current_user['is_admin'] %}
+      <p class="nav-label">Administration</p>
+      <a href="{{ url_for('admin.dashboard') }}" class="{{ 'active' if request.endpoint == 'admin.dashboard' }}">🛠️ Admin Home</a>
+      <a href="{{ url_for('admin.users') }}" class="{{ 'active' if request.endpoint in ['admin.users','admin.user_detail'] }}">👥 People</a>
+      <a href="{{ url_for('admin.roles') }}" class="{{ 'active' if request.endpoint == 'admin.roles' }}">🎛️ Roles</a>
+      <a href="{{ url_for('admin.trainings') }}" class="{{ 'active' if request.endpoint == 'admin.trainings' }}">📚 Trainings</a>
+      <a href="{{ url_for('admin.services') }}" class="{{ 'active' if request.endpoint in ['admin.services','admin.schedule'] }}">🗓️ Schedule</a>
+      <a href="{{ url_for('admin.availability') }}" class="{{ 'active' if request.endpoint == 'admin.availability' }}">🟢 Availability Grid</a>
+      <a href="{{ url_for('admin.swaps') }}" class="{{ 'active' if request.endpoint == 'admin.swaps' }}">🔁 Swap Approvals</a>
+      {% endif %}
+    </nav>
+
+    <div class="sidebar-foot">
+      <div class="who">
+        {% if current_user['avatar'] %}
+        <img class="avatar avatar-img" src="{{ url_for('user.user_avatar', user_id=current_user['id']) }}" alt="">
+        {% else %}
+        <span class="avatar">{{ current_user['name'][0]|upper }}</span>
+        {% endif %}
+        <div>
+          <strong>{{ current_user['name'] }}</strong>
+          <small>{{ 'Administrator' if current_user['is_admin'] else 'Volunteer' }}</small>
+        </div>
+      </div>
+      <a href="{{ url_for('auth.logout') }}" class="logout">Sign out</a>
+    </div>
+  </aside>
+
+  <main class="content">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flashes">
+        {% for cat, msg in messages %}
+          <div class="flash flash-{{ cat }}">{{ msg }}</div>
+        {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    {% block body %}{% endblock %}
+  </main>
+</div>
+{% else %}
+  <div class="auth-shell">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flashes auth-flashes">
+        {% for cat, msg in messages %}
+          <div class="flash flash-{{ cat }}">{{ msg }}</div>
+        {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+    {% block auth_body %}{% endblock %}
+  </div>
+{% endif %}
+</body>
+</html>

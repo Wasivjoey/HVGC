@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Choose a new password · HVGC LINEUP{% endblock %}
+{% block auth_body %}
+<div class="auth-card">
+  <img class="logo-big-img" src="{{ url_for('static', filename='logo.png') }}" alt="HVGC">
+  <h1>Choose a new password</h1>
+  <p class="sub">Enter and confirm your new password</p>
+
+  <form method="post" action="{{ url_for('auth.reset_password', token=token) }}">
+    <label for="password">New password</label>
+    <input type="password" id="password" name="password" required autofocus>
+    <label for="confirm">Confirm new password</label>
+    <input type="password" id="confirm" name="confirm" required>
+    <button type="submit" class="btn btn-block" style="margin-top:18px;">Set new password</button>
+  </form>
+
+  <p class="auth-alt"><a href="{{ url_for('auth.login') }}">← Back to sign in</a></p>
+</div>
+{% endblock %}

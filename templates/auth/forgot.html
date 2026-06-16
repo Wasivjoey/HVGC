@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Forgot password · HVGC LINEUP{% endblock %}
+{% block auth_body %}
+<div class="auth-card">
+  <img class="logo-big-img" src="{{ url_for('static', filename='logo.png') }}" alt="HVGC">
+  <h1>Reset your password</h1>
+  <p class="sub">Enter your username or email and we'll send a reset link</p>
+
+  <form method="post">
+    <label for="identifier">Username or email</label>
+    <input type="text" id="identifier" name="identifier" required autofocus>
+    <button type="submit" class="btn btn-block" style="margin-top:18px;">Send reset link</button>
+  </form>
+
+  {% if dev_link %}
+  <div class="hint" style="text-align:left;">
+    <strong>Email isn't configured on this server</strong>, so use this reset link
+    directly (valid for 1 hour):
+    <p style="margin:8px 0 0;word-break:break-all;"><a href="{{ dev_link }}">{{ dev_link }}</a></p>
+  </div>
+  {% endif %}
+
+  <p class="auth-alt"><a href="{{ url_for('auth.login') }}">← Back to sign in</a></p>
+</div>
+{% endblock %}

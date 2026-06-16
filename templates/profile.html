@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}My Profile · HVGC LINEUP{% endblock %}
+{% block body %}
+<div class="page-head">
+  <div>
+    <h1>My Profile</h1>
+    <p>Your contact details and serving qualifications.</p>
+  </div>
+</div>
+
+<div class="grid grid-2">
+  <div class="card">
+    <h3>Contact details &amp; photo</h3>
+    <form method="post" enctype="multipart/form-data">
+      <div class="avatar-edit">
+        {% if current_user['avatar'] %}
+        <img class="avatar-lg" src="{{ url_for('user.user_avatar', user_id=current_user['id']) }}" alt="Your photo">
+        {% else %}
+        <span class="avatar-lg avatar-lg-letter">{{ current_user['name'][0]|upper }}</span>
+        {% endif %}
+        <div style="flex:1;">
+          <label for="avatar">Profile photo</label>
+          <input type="file" id="avatar" name="avatar" accept="image/png,image/jpeg,image/gif,image/webp">
+          <p class="tag">Square-cropped automatically. PNG, JPG, GIF, or WEBP.</p>
+          {% if current_user['avatar'] %}
+          <label class="check" style="margin-top:6px;">
+            <input type="checkbox" name="remove_avatar" value="1">
+            <span>Remove current photo</span>
+          </label>
+          {% endif %}
+        </div>
+      </div>
+      <label for="name">Full name</label>
+      <input type="text" id="name" name="name" value="{{ current_user['name'] }}" required>
+      <label>Email</label>
+      <input type="text" value="{{ current_user['email'] }}" disabled>
+      <label for="phone">Phone</label>
+      <input type="tel" id="phone" name="phone" value="{{ current_user['phone'] or '' }}">
+      <button class="btn" style="margin-top:16px;">Save changes</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h3>Roles &amp; qualifications</h3>
+    {% if role_status %}
+      {% for rs in role_status %}
+      <div class="list-item">
+        <div>
+          <strong>{{ rs['role']['name'] }}</strong><br>
+          <span class="meta">{{ rs['role']['description'] or '' }}</span>
+        </div>
+        <div>
+          {% if rs['qualified'] %}
+            <span class="badge badge-green">Qualified to serve</span>
+          {% else %}
+            <span class="badge badge-amber">Training {{ rs['completed'] }}/{{ rs['required'] }}</span>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty">No roles assigned yet.</div>
+    {% endif %}
+    <div class="divider"></div>
+    <p class="muted" style="font-size:13px;">Account type: <strong>{{ 'Administrator' if current_user['is_admin'] else 'Volunteer' }}</strong></p>
+  </div>
+</div>
+{% endblock %}

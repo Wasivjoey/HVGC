@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Swap Approvals · Admin{% endblock %}
+{% block body %}
+<div class="page-head">
+  <div>
+    <h1>Swap Approvals</h1>
+    <p>Approve a swap to reassign the slot to the volunteer who picked it up.</p>
+  </div>
+</div>
+
+<div class="card table-card">
+  {% if swaps %}
+  <table>
+    <thead><tr><th>Service</th><th>Role</th><th>Requested by</th><th>Volunteer</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    {% for sw in swaps %}
+      <tr>
+        <td><strong>{{ sw['service_title'] }}</strong><br><span class="muted">{{ sw['service_date']|pretty_date }}</span></td>
+        <td>{{ sw['role_name'] }}</td>
+        <td>{{ sw['requester_name'] }}{% if sw['reason'] %}<br><span class="tag">“{{ sw['reason'] }}”</span>{% endif %}</td>
+        <td>{{ sw['covered_name'] or '—' }}</td>
+        <td>
+          {% if sw['status'] == 'open' %}<span class="badge badge-amber">Awaiting volunteer</span>
+          {% elif sw['status'] == 'volunteered' %}<span class="badge badge-blue">Ready to approve</span>
+          {% elif sw['status'] == 'approved' %}<span class="badge badge-green">Approved</span>
+          {% elif sw['status'] == 'rejected' %}<span class="badge badge-red">Rejected</span>
+          {% else %}<span class="badge badge-gray">{{ sw['status']|capitalize }}</span>{% endif %}
+        </td>
+        <td class="row-actions">
+          {% if sw['status'] == 'volunteered' %}
+            <form method="post" action="{{ url_for('admin.approve_swap', swap_id=sw['id']) }}" class="inline-form">
+              <button class="btn btn-sm btn-green">Approve</button>
+            </form>
+          {% endif %}
+          {% if sw['status'] in ['open','volunteered'] %}
+            <form method="post" action="{{ url_for('admin.reject_swap', swap_id=sw['id']) }}" class="inline-form">
+              <button class="btn btn-sm btn-ghost">Reject</button>
+            </form>
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <div class="empty">No swap requests yet.</div>
+  {% endif %}
+</div>
+{% endblock %}

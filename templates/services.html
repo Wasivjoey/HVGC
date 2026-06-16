@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Services · HVGC LINEUP{% endblock %}
+{% block body %}
+<div class="page-head">
+  <div>
+    <h1>Services</h1>
+    <p>Browse upcoming service times, see the roster, and leave notes.</p>
+  </div>
+</div>
+
+<div class="card table-card">
+  <h3 style="padding:10px 16px 0;">Upcoming</h3>
+  {% if upcoming %}
+  <table>
+    <thead><tr><th>Service</th><th>Date</th><th>Time</th><th>Location</th><th></th></tr></thead>
+    <tbody>
+    {% for s in upcoming %}
+      <tr>
+        <td><strong>{{ s['title'] }}</strong></td>
+        <td>{{ s['service_date']|pretty_date }}</td>
+        <td>{{ s['start_time'] or '—' }}</td>
+        <td class="muted">{{ s['location'] or '—' }}</td>
+        <td><a href="{{ url_for('user.service_detail', service_id=s['id']) }}" class="btn btn-sm btn-ghost">Open</a></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <div class="empty">No upcoming services scheduled.</div>
+  {% endif %}
+</div>
+
+{% if past %}
+<div class="card table-card">
+  <h3 style="padding:10px 16px 0;">Recent past services</h3>
+  <table>
+    <thead><tr><th>Service</th><th>Date</th><th></th></tr></thead>
+    <tbody>
+    {% for s in past %}
+      <tr>
+        <td>{{ s['title'] }}</td>
+        <td class="muted">{{ s['service_date']|pretty_date }}</td>
+        <td><a href="{{ url_for('user.service_detail', service_id=s['id']) }}" class="btn btn-sm btn-ghost">Open</a></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}

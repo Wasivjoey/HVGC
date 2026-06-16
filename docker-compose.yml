@@ -1,0 +1,43 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: lineup
+      POSTGRES_PASSWORD: lineup
+      POSTGRES_DB: lineup
+    volumes:
+      - lineup-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lineup"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      # Generate your own with: python3 -c "import secrets; print(secrets.token_hex(32))"
+      SECRET_KEY: "change-me-to-a-long-random-string"
+      # Use the Postgres service for the database.
+      DATABASE_URL: "postgresql://lineup:lineup@db:5432/lineup"
+      UPLOAD_PATH: /data/uploads
+      # Optional email (for verification + password reset). Leave unset to run in
+      # "no email" mode where links are shown on screen.
+      # SMTP_HOST: smtp.example.com
+      # SMTP_PORT: "587"
+      # SMTP_USER: ""
+      # SMTP_PASSWORD: ""
+      # SMTP_FROM: no-reply@yourchurch.org
+    volumes:
+      - lineup-uploads:/data
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  lineup-pgdata:
+  lineup-uploads:

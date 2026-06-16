@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}{{ t['title'] }} · Training{% endblock %}
+{% block body %}
+<div class="page-head">
+  <div>
+    <h1>{{ t['title'] }}</h1>
+    <p>{% if t['role_name'] %}For the <strong>{{ t['role_name'] }}</strong> role · {% endif %}{{ t['description'] or '' }}</p>
+  </div>
+  <a href="{{ url_for('user.trainings') }}" class="btn btn-ghost">← All training</a>
+</div>
+
+<div class="card">
+  {% if t['status'] == 'completed' %}
+    <span class="badge badge-green">✓ Completed {{ t['completed_at']|pretty_dt }}</span>
+  {% else %}
+    <span class="badge badge-amber">Not yet completed</span>
+  {% endif %}
+
+  {% if video %}
+  <div class="divider"></div>
+  <h3 style="margin-bottom:10px;">🎬 Training video</h3>
+  {% if video['kind'] in ['youtube', 'vimeo'] %}
+    <div class="video-wrap">
+      <iframe id="training-video"
+              data-provider="{{ video['kind'] }}"
+              src="{{ video['src'] }}"
+              title="Training video"
+              frameborder="0"
+              allow="autoplay; fullscreen; picture-in-picture"
+              allowfullscreen></iframe>
+    </div>
+  {% elif video['kind'] == 'file' %}
+    <div class="video-wrap">
+      <video id="training-video" controls preload="metadata" playsinline>
+        <source src="{{ video['src'] }}">
+        Your browser cannot play this video.
+        <a href="{{ video['original'] }}">Open it directly</a>.
+      </video>
+    </div>
+  {% else %}
+    <p>This training links to an external video:
+      <a href="{{ video['original'] }}" target="_blank" rel="noopener">Open the video ↗</a></p>
+  {% endif %}
+  {% if video['kind'] in ['youtube', 'vimeo', 'file'] %}
+    <p class="tag" id="pause-hint">▶ The video automatically pauses if you switch tabs or leave this window.</p>
+  {% endif %}
+  {% endif %}
+
+  <div class="divider"></div>
+  <div class="content-prose">{{ t['content'] or 'No additional written content for this training.' }}</div>
+</div>
+
+{% if t['status'] != 'completed' %}
+<form method="post" action="{{ url_for('user.complete_training', training_id=t['training_id']) }}">
+  <button class="btn btn-green">✓ Mark this training complete</button>
+</form>
+{% else %}
+<p class="muted">You've completed this training. Nice work!</p>
+{% endif %}
+
+{% if video and video['kind'] in ['youtube', 'vimeo', 'file'] %}
+<script>
+(function () {
+  // Pause the training video whenever the user leaves this window/tab so it
+  // can't keep playing in the background.
+  function pauseAll() {
+    document.querySelectorAll('video').forEach(function (v) {
+      try { v.pause(); } catch (e) {}
+    });
+    document.querySelectorAll('iframe[data-provider]').forEach(function (f) {
+      var provider = f.getAttribute('data-provider');
+      try {
+        if (provider === 'youtube') {
+          f.contentWindow.postMessage(
+            '{"event":"command","func":"pauseVideo","args":""}', '*');
+        } else if (provider === 'vimeo') {
+          f.contentWindow.postMessage('{"method":"pause"}', '*');
+        }
+      } catch (e) {}
+    });
+    var hint = document.getElementById('pause-hint');
+    if (hint) { hint.textContent = '⏸ Paused — you left the window. Click the video to resume.'; }
+  }
+
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) { pauseAll(); }
+  });
+  window.addEventListener('blur', pauseAll);
+  window.addEventListener('pagehide', pauseAll);
+})();
+</script>
+{% endif %}
+{% endblock %}

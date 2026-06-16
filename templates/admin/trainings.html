@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Trainings · Admin{% endblock %}
+{% block body %}
+<div class="page-head">
+  <div>
+    <h1>Trainings</h1>
+    <p>Build the training volunteers must complete before serving in a role.</p>
+  </div>
+</div>
+
+<div class="grid grid-2">
+  <div>
+    {% for tv in training_view %}
+    <div class="card">
+      <div class="list-item" style="border:none;padding:0;">
+        <div>
+          <strong>{{ tv['t']['title'] }}</strong>
+          {% if tv['t']['required'] %}<span class="badge badge-amber">Required</span>{% else %}<span class="badge badge-gray">Optional</span>{% endif %}<br>
+          <span class="meta">{{ tv['t']['description'] or '' }}</span>
+        </div>
+        <div class="pill-row">
+          {% if tv['t']['role_name'] %}<span class="badge badge-blue">{{ tv['t']['role_name'] }}</span>{% endif %}
+          <span class="badge badge-green">{{ tv['done'] }}/{{ tv['assigned'] }} done</span>
+        </div>
+      </div>
+      <details class="inline-edit" style="margin-top:10px;">
+        <summary>Edit / delete</summary>
+        <form method="post" action="{{ url_for('admin.edit_training', training_id=tv['t']['id']) }}">
+          <label>Title</label>
+          <input type="text" name="title" value="{{ tv['t']['title'] }}" required>
+          <label>Short description</label>
+          <input type="text" name="description" value="{{ tv['t']['description'] or '' }}">
+          <label>Video link <span class="muted">(YouTube, Vimeo, or .mp4 URL)</span></label>
+          <input type="text" name="video_url" value="{{ tv['t']['video_url'] or '' }}" placeholder="https://youtu.be/…">
+          <label>Linked role</label>
+          <select name="role_id">
+            <option value="">— None —</option>
+            {% for r in roles %}
+            <option value="{{ r['id'] }}" {{ 'selected' if r['id'] == tv['t']['role_id'] }}>{{ r['name'] }}</option>
+            {% endfor %}
+          </select>
+          <label>Content</label>
+          <textarea name="content">{{ tv['t']['content'] or '' }}</textarea>
+          <div class="check" style="margin-top:10px;">
+            <input type="checkbox" id="req{{ tv['t']['id'] }}" name="required" {{ 'checked' if tv['t']['required'] }}>
+            <label for="req{{ tv['t']['id'] }}">Required to serve in the linked role</label>
+          </div>
+          <button class="btn btn-sm" style="margin-top:10px;">Save</button>
+        </form>
+        <form method="post" action="{{ url_for('admin.delete_training', training_id=tv['t']['id']) }}" onsubmit="return confirm('Delete this training?');">
+          <button class="btn btn-sm btn-red" style="margin-top:8px;">Delete training</button>
+        </form>
+      </details>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="card" style="align-self:start;">
+    <h3>+ New training</h3>
+    <form method="post">
+      <label for="title">Title</label>
+      <input type="text" id="title" name="title" placeholder="e.g. Sound Board Level 2" required>
+      <label for="description">Short description</label>
+      <input type="text" id="description" name="description">
+      <label for="video_url">Video link <span class="muted">(YouTube, Vimeo, or .mp4 URL)</span></label>
+      <input type="text" id="video_url" name="video_url" placeholder="https://youtu.be/…">
+      <label for="role_id">Linked role</label>
+      <select id="role_id" name="role_id">
+        <option value="">— None —</option>
+        {% for r in roles %}
+        <option value="{{ r['id'] }}">{{ r['name'] }}</option>
+        {% endfor %}
+      </select>
+      <label for="content">Content / instructions</label>
+      <textarea id="content" name="content" placeholder="What the volunteer needs to read and do"></textarea>
+      <div class="check" style="margin-top:10px;">
+        <input type="checkbox" id="required" name="required" checked>
+        <label for="required">Required to serve in the linked role</label>
+      </div>
+      <button class="btn" style="margin-top:14px;">Create training</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

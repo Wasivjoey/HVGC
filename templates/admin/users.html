@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}People · Admin{% endblock %}
+{% block body %}
+<div class="page-head">
+  <div>
+    <h1>People</h1>
+    <p>Everyone on the team. Click a person to assign roles &amp; training.</p>
+  </div>
+</div>
+
+<div class="card table-card">
+  <table>
+    <thead><tr><th>Name</th><th>Email</th><th>Roles</th><th>Type</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    {% for p in people %}
+      <tr>
+        <td>
+          <div class="name-cell">
+            {% if p['u']['avatar'] %}
+            <img class="avatar-sm" src="{{ url_for('user.user_avatar', user_id=p['u']['id']) }}" alt="">
+            {% else %}
+            <span class="avatar-sm avatar-sm-letter">{{ p['u']['name'][0]|upper }}</span>
+            {% endif %}
+            <div>
+              <strong>{{ p['u']['name'] }}</strong><br>
+              <span class="muted" style="font-size:12px;">@{{ p['u']['username'] }}</span>
+            </div>
+          </div>
+        </td>
+        <td class="muted">{{ p['u']['email'] }}</td>
+        <td><span class="badge badge-gray">{{ p['roles'] }} role{{ 's' if p['roles'] != 1 }}</span></td>
+        <td>{% if p['u']['is_admin'] %}<span class="badge badge-blue">Admin</span>{% else %}<span class="badge badge-gray">Volunteer</span>{% endif %}</td>
+        <td>
+          {% if not p['u']['approved'] %}<span class="badge badge-amber">Pending</span>
+          {% elif not p['u']['is_active'] %}<span class="badge badge-red">Inactive</span>
+          {% else %}<span class="badge badge-green">Active</span>{% endif %}
+        </td>
+        <td class="row-actions">
+          {% if not p['u']['approved'] %}
+          <form method="post" action="{{ url_for('admin.quick_approve', user_id=p['u']['id']) }}" class="inline-form">
+            <button class="btn btn-sm btn-green">Approve</button>
+          </form>
+          {% endif %}
+          <a href="{{ url_for('admin.user_detail', user_id=p['u']['id']) }}" class="btn btn-sm btn-ghost">Manage</a>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

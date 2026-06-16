@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Schedule · Admin{% endblock %}
+{% block body %}
+<div class="page-head">
+  <div>
+    <h1>Services &amp; Scheduling</h1>
+    <p>Create service times, then open one to build its team.</p>
+  </div>
+</div>
+
+<div class="grid grid-2">
+  <div>
+    <div class="card table-card">
+      <h3 style="padding:10px 16px 0;">Upcoming</h3>
+      {% if upcoming %}
+      <table>
+        <thead><tr><th>Service</th><th>Date</th><th>Slots</th><th></th></tr></thead>
+        <tbody>
+        {% for s in upcoming %}
+          <tr>
+            <td><strong>{{ s['title'] }}</strong><br><span class="muted">{{ s['start_time'] or '' }} {{ s['location'] or '' }}</span></td>
+            <td>{{ s['service_date']|pretty_date }}</td>
+            <td><span class="badge badge-blue">{{ s['slots'] }}</span></td>
+            <td class="row-actions">
+              <a href="{{ url_for('admin.schedule', service_id=s['id']) }}" class="btn btn-sm">Schedule</a>
+              <form method="post" action="{{ url_for('admin.delete_service', service_id=s['id']) }}" class="inline-form" onsubmit="return confirm('Delete this service?');">
+                <button class="btn btn-sm btn-ghost">✕</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}<div class="empty">No upcoming services.</div>{% endif %}
+    </div>
+
+    {% if past %}
+    <div class="card table-card">
+      <h3 style="padding:10px 16px 0;">Past</h3>
+      <table>
+        <tbody>
+        {% for s in past %}
+          <tr>
+            <td>{{ s['title'] }}</td>
+            <td class="muted">{{ s['service_date']|pretty_date }}</td>
+            <td><a href="{{ url_for('admin.schedule', service_id=s['id']) }}" class="btn btn-sm btn-ghost">Open</a></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="card" style="align-self:start;">
+    <h3>+ New service</h3>
+    <form method="post" enctype="multipart/form-data">
+      <label for="title">Title</label>
+      <input type="text" id="title" name="title" placeholder="e.g. Sunday Morning Service" required>
+      <div class="form-row">
+        <div>
+          <label for="service_date">Date</label>
+          <input type="date" id="service_date" name="service_date" min="{{ today }}" required>
+        </div>
+        <div>
+          <label for="start_time">Start time</label>
+          <input type="time" id="start_time" name="start_time">
+        </div>
+      </div>
+      <label for="location">Location</label>
+      <input type="text" id="location" name="location" placeholder="e.g. Main Auditorium">
+      <label for="notes">Notes</label>
+      <textarea id="notes" name="notes" placeholder="Anything the team should know"></textarea>
+      <label for="document">Programme flow document <span class="muted">(PDF, Word, etc.)</span></label>
+      <input type="file" id="document" name="document"
+             accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.rtf,.png,.jpg,.jpeg">
+      <button class="btn" style="margin-top:14px;">Create service</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

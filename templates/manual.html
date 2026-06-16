@@ -1,0 +1,332 @@
+{% extends "base.html" %}
+{% block title %}User Manual · HVGC LINEUP{% endblock %}
+{% block body %}
+<div class="page-head">
+  <div>
+    <h1>📖 HVGC LINEUP — User Manual</h1>
+    <p>Everything you need to navigate the site and use every feature.</p>
+  </div>
+  <div class="row-actions no-print">
+    {% if pdf_exists %}
+    <a href="{{ url_for('user.manual_pdf') }}" class="btn">⬇ Download PDF</a>
+    {% endif %}
+    <button onclick="window.print()" class="btn btn-ghost">🖨 Print</button>
+  </div>
+</div>
+
+<div class="card">
+  <h3>Contents</h3>
+  <div class="grid grid-2">
+    <div>
+      <strong>Getting started</strong>
+      <ul class="manual-toc">
+        <li><a href="#intro">1. What is HVGC LINEUP?</a></li>
+        <li><a href="#accounts">2. Creating an account &amp; signing in</a></li>
+        <li><a href="#layout">3. Finding your way around</a></li>
+      </ul>
+      <strong>For volunteers</strong>
+      <ul class="manual-toc">
+        <li><a href="#dashboard">4. Your dashboard</a></li>
+        <li><a href="#availability">5. Setting your availability</a></li>
+        <li><a href="#services">6. Services &amp; the roster</a></li>
+        <li><a href="#confirm">7. Confirming / declining</a></li>
+        <li><a href="#swaps">8. Role swaps</a></li>
+        <li><a href="#notes">9. Service notes</a></li>
+        <li><a href="#training">10. Training &amp; videos</a></li>
+        <li><a href="#profile">11. Your profile</a></li>
+      </ul>
+    </div>
+    <div>
+      <strong>For administrators</strong>
+      <ul class="manual-toc">
+        <li><a href="#admin-home">12. Admin home</a></li>
+        <li><a href="#people">13. Managing people</a></li>
+        <li><a href="#roles">14. Roles</a></li>
+        <li><a href="#admin-training">15. Building training</a></li>
+        <li><a href="#admin-services">16. Services &amp; documents</a></li>
+        <li><a href="#scheduling">17. The scheduling board</a></li>
+        <li><a href="#grid">18. Availability grid</a></li>
+        <li><a href="#approvals">19. Swap approvals</a></li>
+      </ul>
+      <strong>Reference</strong>
+      <ul class="manual-toc">
+        <li><a href="#qualification">20. The qualification rule</a></li>
+        <li><a href="#faq">21. Quick FAQ</a></li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================ GETTING STARTED -->
+<div class="card manual" id="intro">
+  <h2>1. What is HVGC LINEUP?</h2>
+  <p>HVGC LINEUP is the scheduling system for the audio / visual (AV) team. It
+  lets volunteers say when they're available, see which services they're on, swap
+  roles when they can't make it, and complete the training required to serve.
+  Administrators use it to build the team, assign roles and training, create
+  services, and schedule people.</p>
+  <p>There are two sides to the app: the <strong>Volunteer</strong> side (everyone
+  has this) and the <strong>Administration</strong> side (only admins see this).
+  Both are reached from the menu on the left.</p>
+</div>
+
+<div class="card manual" id="accounts">
+  <h2>2. Creating an account &amp; signing in</h2>
+  <p>New accounts go through two checks before they can be used:</p>
+  <ol>
+    <li>Go to the sign-in page and click <strong>“Create an account.”</strong></li>
+    <li>Enter your name, a <strong>username</strong>, email, optional phone, and a
+        password (at least 6 characters). Click <strong>Create account</strong>.</li>
+    <li><strong>Verify your email.</strong> Open the verification link sent to your
+        address (if email isn't set up on the server, the link is shown on screen
+        and on the admin's page).</li>
+    <li><strong>Wait for approval.</strong> An administrator approves new accounts.
+        You'll be able to sign in once your email is verified <em>and</em> an admin
+        has approved you.</li>
+    <li>Then sign in with your <strong>username or email</strong> plus your password.
+        Use <strong>Sign out</strong> (bottom-left) when you're done.</li>
+  </ol>
+  <p>Forgot your password? Click <strong>“Forgot your password?”</strong> on the sign-in
+  page, enter your username or email, and follow the reset link (it's emailed, or shown
+  on screen when email isn't configured). The link expires after one hour.</p>
+  <p class="tag">Tip: the very first account on a brand-new system becomes an
+  approved administrator automatically, so the team can get set up.</p>
+</div>
+
+<div class="card manual" id="layout">
+  <h2>3. Finding your way around</h2>
+  <p>The dark menu on the left is always visible. It is split into sections:</p>
+  <ul>
+    <li><strong>Volunteer</strong> — Dashboard, My Availability, Services, Role
+        Swaps, Training, My Profile, and this Manual.</li>
+    <li><strong>Administration</strong> — only shown to admins: Admin Home, People,
+        Roles, Trainings, Schedule, Availability Grid, Swap Approvals.</li>
+  </ul>
+  <p>Your name and role (Volunteer or Administrator) appear at the bottom, with the
+  <strong>Sign out</strong> button. Coloured messages appear at the top of the page
+  to confirm actions or warn you about something.</p>
+</div>
+
+<!-- ============================================ VOLUNTEER -->
+<div class="card manual" id="dashboard">
+  <h2>4. Your dashboard</h2>
+  <p>The dashboard (<strong>Dashboard</strong> in the menu) is your home base. It shows:</p>
+  <ul>
+    <li><strong>Training to complete</strong> — any required training you must
+        finish before you can serve (highlighted at the top if outstanding).</li>
+    <li><strong>Your upcoming assignments</strong> — services you're scheduled for,
+        with a status badge (Scheduled / Confirmed / Declined).</li>
+    <li><strong>Your roles &amp; qualification</strong> — each role you hold and
+        whether you're fully qualified or still in training.</li>
+    <li><strong>Swaps you can cover</strong> — open swap requests from teammates
+        that you're qualified to pick up.</li>
+  </ul>
+</div>
+
+<div class="card manual" id="availability">
+  <h2>5. Setting your availability</h2>
+  <p>Open <strong>My Availability</strong>. This is how schedulers know when to use
+  you.</p>
+  <ol>
+    <li>Choose <strong>✅ Available</strong> or <strong>⛔ Unavailable</strong>.</li>
+    <li>Pick a <strong>From date</strong>. To mark just one day, leave
+        <strong>To date</strong> blank. To mark a stretch of days (for example a
+        holiday), set a <strong>To date</strong> as well — every day in the range
+        is marked at once.</li>
+    <li>Add an optional note (e.g. “available after 11am”) and click
+        <strong>Save availability</strong>.</li>
+  </ol>
+  <p>Use <strong>Quick mark upcoming Sundays</strong> to flag the next eight Sundays
+  available in one click each. Your marked dates are listed on the right; use
+  <strong>Remove</strong> to clear any entry. Saving the same date again updates it.</p>
+</div>
+
+<div class="card manual" id="services">
+  <h2>6. Services &amp; the roster</h2>
+  <p>Open <strong>Services</strong> to see upcoming (and recent past) service times.
+  Click <strong>Open</strong> on any service to view its detail page, which shows:</p>
+  <ul>
+    <li>The date, start time, and location.</li>
+    <li>Any <strong>service notes</strong> and the <strong>📄 programme flow
+        document</strong> (click to open/download it) if the admin attached one.</li>
+    <li>The full <strong>roster</strong> — who is serving in each role.</li>
+  </ul>
+</div>
+
+<div class="card manual" id="confirm">
+  <h2>7. Confirming or declining an assignment</h2>
+  <p>When you're scheduled for a service, open that service. Under
+  <strong>“Your role this service”</strong> you can:</p>
+  <ul>
+    <li><strong>Confirm</strong> — let the team know you'll be there.</li>
+    <li><strong>Decline</strong> — flag that you can't make it.</li>
+    <li><strong>Request swap</strong> — see the next section.</li>
+  </ul>
+</div>
+
+<div class="card manual" id="swaps">
+  <h2>8. Role swaps</h2>
+  <p>Can't make a service you're scheduled for? Hand it off:</p>
+  <ol>
+    <li>On the service page, open <strong>Request swap</strong> under your role,
+        add an optional reason, and post it.</li>
+    <li>Qualified teammates now see your slot under <strong>Role Swaps</strong> and
+        on their dashboard. One of them clicks <strong>Volunteer</strong> to cover it.</li>
+    <li>An administrator approves the swap, which reassigns the slot to the
+        volunteer. You'll see the status change to <strong>Approved</strong>.</li>
+  </ol>
+  <p>The <strong>Role Swaps</strong> page has two lists: <strong>Swaps you can
+  cover</strong> (only roles you're qualified for) and <strong>Your swap
+  requests</strong> (with their status; you can cancel one that's still open).</p>
+</div>
+
+<div class="card manual" id="notes">
+  <h2>9. Service notes</h2>
+  <p>On any service page, the <strong>📝 Notes</strong> panel lets anyone on the
+  team leave a note about that service time (reminders, special instructions, etc.).
+  Type your note and click <strong>Add note</strong>. You can delete notes you wrote.</p>
+</div>
+
+<div class="card manual" id="training">
+  <h2>10. Training &amp; videos</h2>
+  <p>Open <strong>Training</strong> to see everything assigned to you and whether
+  it's <strong>To do</strong> or <strong>Completed</strong>. Click
+  <strong>Start</strong> to open a training, where you'll find:</p>
+  <ul>
+    <li>A <strong>🎬 training video</strong> (if one is attached). <strong>Important:
+        the video automatically pauses the moment you switch tabs or leave the
+        window</strong>, so you need to actually watch it.</li>
+    <li>Written content / instructions.</li>
+    <li>A <strong>“Mark this training complete”</strong> button — click it once
+        you've finished.</li>
+  </ul>
+  <p>You must complete every required training for a role before you can be
+  scheduled in it (see section 20).</p>
+</div>
+
+<div class="card manual" id="profile">
+  <h2>11. Your profile</h2>
+  <p><strong>My Profile</strong> lets you update your name and phone number, and
+  shows the roles you hold with your qualification status for each. Your email and
+  account type are shown but managed by an administrator.</p>
+</div>
+
+<!-- ============================================ ADMIN -->
+<div class="card manual" id="admin-home" style="border-top:3px solid var(--brand);">
+  <h2>12. Admin home <span class="badge badge-blue">Admins only</span></h2>
+  <p>Sections 12–19 are visible only to administrators. <strong>Admin Home</strong>
+  gives an overview: counts of people, roles, services, trainings, open swaps, and
+  training in progress, plus your next services and any swaps needing attention.</p>
+</div>
+
+<div class="card manual" id="people">
+  <h2>13. Managing people</h2>
+  <p>New sign-ups appear on <strong>Admin Home</strong> and on <strong>People</strong>
+  with a <strong>Pending</strong> badge — click <strong>Approve</strong> to let them
+  sign in. Open <strong>People</strong> for the full team list, then <strong>Manage</strong>
+  on anyone to:</p>
+  <ul>
+    <li><strong>Approve / revoke approval</strong>, and <strong>mark email verified</strong>
+        manually (or copy the verification link to send them).</li>
+    <li><strong>Assign / remove roles.</strong> Assigning a role automatically queues
+        that role's required training for the person.</li>
+    <li><strong>Assign, complete, reset, or remove training.</strong></li>
+    <li><strong>Make admin / revoke admin</strong>, and <strong>activate /
+        deactivate</strong> the account. (You can't change your own admin/approval status.)</li>
+  </ul>
+</div>
+
+<div class="card manual" id="roles">
+  <h2>14. Roles</h2>
+  <p>Open <strong>Roles</strong> to create the serving positions on your team
+  (Audio Engineer, Lighting, Camera, etc.). For each role you can edit its name and
+  description, or delete it. Each role shows how many people are assigned and how
+  many are fully qualified.</p>
+</div>
+
+<div class="card manual" id="admin-training">
+  <h2>15. Building training</h2>
+  <p>Open <strong>Trainings</strong> to create training modules. For each one you set:</p>
+  <ul>
+    <li><strong>Title</strong> and short description.</li>
+    <li><strong>Video link</strong> — paste a YouTube, Vimeo, or direct <code>.mp4</code>
+        URL; it embeds on the volunteer's training page and auto-pauses when they leave.</li>
+    <li><strong>Linked role</strong> — which role this training belongs to.</li>
+    <li><strong>Content / instructions</strong> — the written material.</li>
+    <li><strong>Required to serve</strong> — tick this if it must be completed before
+        serving in the linked role.</li>
+  </ul>
+  <p>You can edit or delete trainings, and each shows how many people have completed it.</p>
+</div>
+
+<div class="card manual" id="admin-services">
+  <h2>16. Services &amp; documents</h2>
+  <p>Open <strong>Schedule</strong>. The <strong>+ New service</strong> form creates a
+  service with a <strong>title, date, start time, location, notes</strong>, and an
+  optional <strong>programme flow document</strong> (PDF, Word, PowerPoint, Excel,
+  images). You can later edit any of these — including changing the time and location
+  — and attach, replace, or remove the document from the service's scheduling page.</p>
+</div>
+
+<div class="card manual" id="scheduling">
+  <h2>17. The scheduling board</h2>
+  <p>Click <strong>Schedule</strong> on a service to build its team. For each role you
+  see every candidate with two signals:</p>
+  <ul>
+    <li>A coloured dot for availability — <span class="dot dot-green"></span> available,
+        <span class="dot dot-red"></span> unavailable, <span class="dot dot-gray"></span>
+        not marked — on that service's date.</li>
+    <li>A badge showing whether they're <strong>Qualified</strong> or
+        <strong>Not trained</strong>.</li>
+  </ul>
+  <p>Click <strong>Assign</strong> to schedule a qualified person. People who haven't
+  finished the required training are blocked, but you can use <strong>Override</strong>
+  to assign them anyway. The <strong>current roster</strong> is shown at the top, where
+  you can <strong>Remove</strong> anyone.</p>
+</div>
+
+<div class="card manual" id="grid">
+  <h2>18. Availability grid</h2>
+  <p>Open <strong>Availability Grid</strong> for an at-a-glance matrix of every
+  volunteer against each upcoming service date, using the same green / red / grey
+  dots. It's the fastest way to see who's free before you schedule.</p>
+</div>
+
+<div class="card manual" id="approvals">
+  <h2>19. Swap approvals</h2>
+  <p>Open <strong>Swap Approvals</strong> to see all swap requests. When a teammate
+  has volunteered to cover a slot, the request shows <strong>Ready to approve</strong>
+  — click <strong>Approve</strong> to reassign the slot to them, or <strong>Reject</strong>
+  to decline. Open requests with no volunteer yet can also be rejected.</p>
+</div>
+
+<!-- ============================================ REFERENCE -->
+<div class="card manual" id="qualification" style="border-top:3px solid var(--green);">
+  <h2>20. The qualification rule</h2>
+  <p>This is the heart of the system: <strong>a volunteer can only be scheduled for a
+  role once they have completed every required training linked to that role.</strong></p>
+  <ul>
+    <li>Assigning a role auto-queues its required training.</li>
+    <li>Until the training is done, the person shows as <strong>“Training X/Y”</strong>
+        and can't be assigned on the board (admins may override).</li>
+    <li>The same rule decides which open swaps a volunteer is allowed to cover.</li>
+  </ul>
+</div>
+
+<div class="card manual" id="faq">
+  <h2>21. Quick FAQ</h2>
+  <p><strong>I can't be assigned to a role.</strong> You probably haven't finished
+  its required training — check the <strong>Training</strong> page.</p>
+  <p><strong>The training video stopped.</strong> That's intentional — it pauses when
+  you leave the window. Return to the tab and press play to resume.</p>
+  <p><strong>I marked a whole week off but it shows many rows.</strong> A date range is
+  stored as one entry per day; that's normal and lets schedulers see each day.</p>
+  <p><strong>I just registered but can't sign in.</strong> Make sure you've opened the
+  email verification link, then wait for an administrator to approve your account — both
+  are required.</p>
+  <p><strong>I can't see the admin menu.</strong> Those tools are for administrators.
+  Ask an existing admin to grant you access from the <strong>People</strong> page.</p>
+  <p><strong>I forgot to confirm and the service passed.</strong> No problem — confirming
+  is a courtesy so the team knows you're coming; it doesn't remove you from the roster.</p>
+</div>
+{% endblock %}
