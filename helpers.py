@@ -266,9 +266,14 @@ def poll_is_open(poll, now_str=None):
     return not poll["closes_at"] or poll["closes_at"] >= now_str
 
 
-def get_polls(conn, user_id=None, only_open=False):
+def get_polls(conn, user_id=None, only_open=False, with_voters=False):
     """Return polls with their options, vote counts/percentages, the current
-    user's choice, and whether the poll is still open."""
+    user's choice, and whether the poll is still open.
+
+    When ``with_voters`` is set (admin view only), each option also includes the
+    list of users who chose it. Volunteers never get this — their results stay
+    anonymous.
+    """
     now = now_iso()
     result = []
     for p in conn.execute("SELECT * FROM polls ORDER BY created_at DESC").fetchall():
@@ -293,6 +298,16 @@ def get_polls(conn, user_id=None, only_open=False):
                 (p["id"], user_id),
             ).fetchone()
             user_opt = uv["option_id"] if uv else None
+
+        voters_by_option = {}
+        if with_voters:
+            for v in conn.execute(
+                "SELECT pv.option_id, u.name FROM poll_votes pv"
+                " JOIN users u ON u.id = pv.user_id"
+                " WHERE pv.poll_id = ? ORDER BY u.name", (p["id"],)
+            ).fetchall():
+                voters_by_option.setdefault(v["option_id"], []).append(v["name"])
+
         result.append({
             "poll": p,
             "open": is_open,
@@ -301,6 +316,7 @@ def get_polls(conn, user_id=None, only_open=False):
             "options": [{
                 "id": o["id"], "text": o["text"], "votes": counts[o["id"]],
                 "pct": round(counts[o["id"]] * 100 / total) if total else 0,
+                "voters": voters_by_option.get(o["id"], []),
             } for o in opts],
         })
     return result

@@ -47,6 +47,9 @@
             <span>{{ o['text'] }}</span><span class="muted">{{ o['pct'] }}% · {{ o['votes'] }}</span>
           </div>
           <div class="poll-bar"><div class="poll-bar-fill" style="width:{{ o['pct'] }}%;"></div></div>
+          {% if o['voters'] %}
+          <p class="tag" style="margin:4px 0 0;">🗳 {{ o['voters']|join(', ') }}</p>
+          {% endif %}
         </div>
         {% endfor %}
         <p class="meta" style="margin:8px 0 0;">{{ p['total'] }} response{{ 's' if p['total'] != 1 }}

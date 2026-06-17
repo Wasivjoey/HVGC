@@ -815,7 +815,7 @@ def polls():
         conn.close()
         return redirect(url_for("admin.polls"))
 
-    poll_view = get_polls(conn, user_id=me["id"])
+    poll_view = get_polls(conn, user_id=me["id"], with_voters=True)
     conn.close()
     return render_template("admin/polls.html", poll_view=poll_view)
 
