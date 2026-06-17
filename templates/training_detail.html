@@ -56,7 +56,7 @@
 <form method="post" action="{{ url_for('user.complete_training', training_id=t['training_id']) }}">
   <button id="complete-btn" class="btn btn-green" {{ 'disabled' if needs_watch }}>✓ Mark this training complete</button>
   {% if needs_watch %}
-    <p class="tag" id="watch-hint">▶ Watch the full video above to enable this.</p>
+    <p class="tag" id="watch-hint">▶ Watch the full video above to enable this — skipping ahead is disabled.</p>
   {% elif playable %}
     <p class="tag">✅ Video watched.</p>
   {% endif %}
@@ -70,6 +70,10 @@
 (function () {
   var COMPLETE_URL = "{{ url_for('user.video_complete', training_id=t['training_id']) }}";
   var alreadyWatched = {{ 'true' if t['video_completed'] else 'false' }};
+  var TOL = 2.0;          // seconds of forward jump tolerated (buffering jitter)
+  var END_GAP = 2.0;      // must reach within this many seconds of the end
+  var maxWatched = 0;     // furthest point reached by *real* playback
+  var done = false;
 
   function enableButton(msg) {
     var b = document.getElementById('complete-btn');
@@ -83,21 +87,52 @@
     try { fetch(COMPLETE_URL, {method: 'POST'}); } catch (e) {}
     enableButton('✅ Video watched — you can mark this training complete now.');
   }
-  if (alreadyWatched) { enableButton(); }
+  // Advance the watched marker only for small, forward, continuous steps.
+  function advance(t) {
+    if (t > maxWatched && (t - maxWatched) <= TOL) { maxWatched = t; }
+  }
+  function checkDone(duration) {
+    if (!done && duration && maxWatched >= duration - END_GAP) {
+      done = true;
+      markWatched();
+    }
+  }
+  if (alreadyWatched) { done = true; enableButton(); }
 
-  // --- Detect when the video has played to the end, per provider ---
+  // --- Per-provider progress tracking + anti-skip ---
   {% if video['kind'] == 'file' %}
   var v = document.getElementById('training-video');
-  if (v) { v.addEventListener('ended', markWatched); }
+  if (v && !alreadyWatched) {
+    v.addEventListener('timeupdate', function () {
+      if (!v.seeking) { advance(v.currentTime); }
+      checkDone(v.duration);
+    });
+    // Block forward skips past what's actually been watched.
+    v.addEventListener('seeking', function () {
+      if (v.currentTime > maxWatched + TOL) { v.currentTime = maxWatched; }
+    });
+  }
   {% elif video['kind'] == 'youtube' %}
   var ytTag = document.createElement('script');
   ytTag.src = 'https://www.youtube.com/iframe_api';
   document.head.appendChild(ytTag);
   window.onYouTubeIframeAPIReady = function () {
-    new YT.Player('training-video', {
+    var player = new YT.Player('training-video', {
       events: {
-        'onStateChange': function (e) {
-          if (e.data === YT.PlayerState.ENDED) { markWatched(); }
+        'onReady': function () {
+          if (alreadyWatched) { return; }
+          setInterval(function () {
+            try {
+              var t = player.getCurrentTime();
+              var dur = player.getDuration();
+              if (t > maxWatched + TOL) {
+                player.seekTo(maxWatched, true);  // snap back: no skipping ahead
+              } else {
+                advance(t);
+              }
+              checkDone(dur);
+            } catch (e) {}
+          }, 400);
         }
       }
     });
@@ -108,7 +143,14 @@
   vimeoTag.onload = function () {
     try {
       var p = new Vimeo.Player(document.getElementById('training-video'));
-      p.on('ended', markWatched);
+      if (alreadyWatched) { return; }
+      p.on('timeupdate', function (data) {
+        advance(data.seconds);
+        checkDone(data.duration);
+      });
+      p.on('seeked', function (data) {
+        if (data.seconds > maxWatched + TOL) { p.setCurrentTime(maxWatched); }
+      });
     } catch (e) {}
   };
   document.head.appendChild(vimeoTag);
