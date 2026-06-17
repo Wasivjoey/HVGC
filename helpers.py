@@ -257,9 +257,9 @@ def notify(conn, user_id, body, link=None, email=False, subject=None):
     )
     if email:
         row = conn.execute(
-            "SELECT name, email FROM users WHERE id = ?", (user_id,)
+            "SELECT name, email, email_opt_in FROM users WHERE id = ?", (user_id,)
         ).fetchone()
-        if row and row["email"]:
+        if row and row["email"] and row["email_opt_in"]:
             url = ""
             if link:
                 try:

@@ -611,10 +611,11 @@ def profile():
             flash("That email is already in use by another account.", "danger")
             return redirect(url_for("user.profile"))
 
+        email_opt_in = 1 if request.form.get("email_opt_in") == "on" else 0
         if name:
             conn.execute(
-                "UPDATE users SET name = ?, phone = ?, email = ? WHERE id = ?",
-                (name, phone, email, user["id"]),
+                "UPDATE users SET name = ?, phone = ?, email = ?, email_opt_in = ? WHERE id = ?",
+                (name, phone, email, email_opt_in, user["id"]),
             )
 
         # Remove existing avatar if requested.

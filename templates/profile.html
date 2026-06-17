@@ -36,6 +36,11 @@
       <input type="email" id="email" name="email" value="{{ current_user['email'] }}" required>
       <label for="phone">Phone</label>
       <input type="tel" id="phone" name="phone" value="{{ current_user['phone'] or '' }}">
+      <div class="check" style="margin-top:14px;">
+        <input type="checkbox" id="email_opt_in" name="email_opt_in" {{ 'checked' if current_user['email_opt_in'] }}>
+        <label for="email_opt_in">Email me about important updates (approvals, schedule changes,
+          password resets). You'll still get in-app notifications either way.</label>
+      </div>
       <button class="btn" style="margin-top:16px;">Save changes</button>
     </form>
     <div class="divider"></div>
