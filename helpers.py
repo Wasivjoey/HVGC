@@ -10,7 +10,7 @@ from email.message import EmailMessage
 from functools import wraps
 from urllib.parse import urlparse, parse_qs
 
-from flask import session, redirect, url_for, flash, g, current_app
+from flask import session, redirect, url_for, flash, g, current_app, request
 from werkzeug.utils import secure_filename
 
 from db import get_db, now_iso
@@ -243,13 +243,33 @@ def is_qualified(conn, user_id, role_id):
     return completed >= required
 
 
-def notify(conn, user_id, body, link=None):
-    """Queue an in-app notification for a user. Caller commits."""
+def notify(conn, user_id, body, link=None, email=False, subject=None):
+    """Queue an in-app notification for a user. Caller commits.
+
+    When ``email`` is set, also send the message to the user's email address
+    (used for high-priority events). Email failures never block the in-app
+    notification — send_email already degrades gracefully when SMTP is unset.
+    """
     conn.execute(
         "INSERT INTO notifications (user_id, body, link, is_read, created_at)"
         " VALUES (?, ?, ?, 0, ?)",
         (user_id, body, link, now_iso()),
     )
+    if email:
+        row = conn.execute(
+            "SELECT name, email FROM users WHERE id = ?", (user_id,)
+        ).fetchone()
+        if row and row["email"]:
+            url = ""
+            if link:
+                try:
+                    url = request.url_root.rstrip("/") + link
+                except RuntimeError:  # no request context (shouldn't happen here)
+                    url = link
+            message = (f"Hi {row['name']},\n\n{body}"
+                       + (f"\n\nOpen HVGC LINEUP: {url}" if url else "")
+                       + "\n\n— HVGC LINEUP")
+            send_email(row["email"], subject or "HVGC LINEUP update", message)
 
 
 def notify_all(conn, body, link=None, exclude_id=None):

@@ -221,7 +221,8 @@ def quick_approve(user_id):
     conn = get_db()
     conn.execute("UPDATE users SET approved = 1, is_active = 1 WHERE id = ?", (user_id,))
     notify(conn, user_id, "Your account has been approved — welcome aboard! 🎉",
-           url_for("user.dashboard"))
+           url_for("user.dashboard"), email=True,
+           subject="Your HVGC LINEUP account is approved")
     conn.commit()
     conn.close()
     flash("Account approved.", "success")
@@ -277,7 +278,8 @@ def reset_user_password(user_id):
         (generate_password_hash(temp, method="pbkdf2:sha256"), user_id),
     )
     notify(conn, user_id, "An administrator reset your password. You'll be asked to "
-           "set a new one at your next sign-in.", url_for("user.dashboard"))
+           "set a new one at your next sign-in.", url_for("user.dashboard"),
+           email=True, subject="Your HVGC LINEUP password was reset")
     conn.commit()
     conn.close()
     flash(f"Password reset for @{u['username']}. Temporary password: {temp} — "
@@ -305,7 +307,8 @@ def update_user_flags(user_id):
     elif action == "approve":
         conn.execute("UPDATE users SET approved = 1, is_active = 1 WHERE id = ?", (user_id,))
         notify(conn, user_id, "Your account has been approved — welcome aboard! 🎉",
-               url_for("user.dashboard"))
+               url_for("user.dashboard"), email=True,
+               subject="Your HVGC LINEUP account is approved")
         flash("Account approved — the user can now sign in (after verifying email).",
               "success")
     elif action == "unapprove":
@@ -658,7 +661,8 @@ def assign(service_id):
     if svc and role:
         notify(conn, user_id,
                f"You're scheduled as {role['name']} for {svc['title']} on "
-               f"{svc['service_date']}.", url_for("user.service_detail", service_id=service_id))
+               f"{svc['service_date']}.", url_for("user.service_detail", service_id=service_id),
+               email=True, subject="You've been scheduled — HVGC LINEUP")
     conn.commit()
     conn.close()
     flash("Assigned.", "success")
@@ -740,7 +744,8 @@ def approve_swap(swap_id):
         link = url_for("user.service_detail", service_id=info["service_id"])
         notify(conn, sw["covered_by"],
                f"Your swap was approved — you're now {info['role_name']} for "
-               f"{info['service_title']} on {info['service_date']}.", link)
+               f"{info['service_title']} on {info['service_date']}.", link,
+               email=True, subject="Swap approved — you're scheduled (HVGC LINEUP)")
         notify(conn, sw["requested_by"],
                f"Your swap request for {info['service_title']} was approved and covered.",
                link)
