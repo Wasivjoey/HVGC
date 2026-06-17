@@ -43,6 +43,18 @@
             <button class="btn btn-sm btn-red">Delete</button>
           </form>
         </div>
+        <details class="inline-edit" style="margin-top:10px;">
+          <summary>Edit</summary>
+          <form method="post" action="{{ url_for('admin.edit_announcement', ann_id=a['id']) }}">
+            <label>Title</label>
+            <input type="text" name="title" value="{{ a['title'] }}" required>
+            <label>Message</label>
+            <textarea name="body" required>{{ a['body'] }}</textarea>
+            <label>Hide after <span class="muted">(optional)</span></label>
+            <input type="date" name="expires_at" value="{{ a['expires_at'] or '' }}">
+            <button class="btn btn-sm" style="margin-top:10px;">Save changes</button>
+          </form>
+        </details>
       </div>
       {% endfor %}
     {% else %}

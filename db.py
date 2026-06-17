@@ -175,6 +175,17 @@ CREATE TABLE IF NOT EXISTS poll_votes (
     created_at TEXT NOT NULL,
     UNIQUE(poll_id, user_id)
 );
+
+-- In-app notifications delivered to a user when something involving them
+-- happens (role/training/schedule changes, approvals, announcements, etc.).
+CREATE TABLE IF NOT EXISTS notifications (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    body       TEXT NOT NULL,
+    link       TEXT,
+    is_read    INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL
+);
 """
 
 

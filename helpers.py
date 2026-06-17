@@ -243,6 +243,34 @@ def is_qualified(conn, user_id, role_id):
     return completed >= required
 
 
+def notify(conn, user_id, body, link=None):
+    """Queue an in-app notification for a user. Caller commits."""
+    conn.execute(
+        "INSERT INTO notifications (user_id, body, link, is_read, created_at)"
+        " VALUES (?, ?, ?, 0, ?)",
+        (user_id, body, link, now_iso()),
+    )
+
+
+def notify_all(conn, body, link=None, exclude_id=None):
+    """Notify every active user (optionally excluding one, e.g. the actor)."""
+    if exclude_id:
+        rows = conn.execute(
+            "SELECT id FROM users WHERE is_active = 1 AND id <> ?", (exclude_id,)
+        ).fetchall()
+    else:
+        rows = conn.execute("SELECT id FROM users WHERE is_active = 1").fetchall()
+    for r in rows:
+        notify(conn, r["id"], body, link)
+
+
+def unread_notification_count(conn, user_id):
+    return conn.execute(
+        "SELECT COUNT(*) AS c FROM notifications WHERE user_id = ? AND is_read = 0",
+        (user_id,),
+    ).fetchone()["c"]
+
+
 def get_announcements(conn, active_only=True):
     """Announcements for display. active_only filters to live, unexpired ones."""
     if active_only:

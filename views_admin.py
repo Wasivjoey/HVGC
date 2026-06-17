@@ -13,7 +13,7 @@ from db import get_db, now_iso, execute_returning_id
 from helpers import (
     admin_required, current_user, role_training_status, is_qualified,
     qualified_users_for_role, save_document, delete_document,
-    get_announcements, get_polls,
+    get_announcements, get_polls, notify, notify_all,
 )
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
@@ -137,6 +137,8 @@ def update_user_roles(user_id):
     conn = get_db()
     role_id = int(request.form.get("role_id"))
     action = request.form.get("action")
+    role = conn.execute("SELECT name FROM roles WHERE id = ?", (role_id,)).fetchone()
+    role_name = role["name"] if role else "a role"
     if action == "assign":
         conn.execute(
             "INSERT OR IGNORE INTO user_roles (user_id, role_id, assigned_at)"
@@ -154,11 +156,15 @@ def update_user_roles(user_id):
                 " VALUES (?, ?, 'assigned', ?)",
                 (user_id, t["id"], now_iso()),
             )
+        notify(conn, user_id, f"You were assigned the {role_name} role.",
+               url_for("user.profile"))
         flash("Role assigned and required training queued.", "success")
     elif action == "remove":
         conn.execute(
             "DELETE FROM user_roles WHERE user_id = ? AND role_id = ?", (user_id, role_id)
         )
+        notify(conn, user_id, f"The {role_name} role was removed from your account.",
+               url_for("user.profile"))
         flash("Role removed.", "info")
     conn.commit()
     conn.close()
@@ -171,12 +177,16 @@ def update_user_training(user_id):
     conn = get_db()
     training_id = int(request.form.get("training_id"))
     action = request.form.get("action")
+    tr = conn.execute("SELECT title FROM trainings WHERE id = ?", (training_id,)).fetchone()
+    tr_title = tr["title"] if tr else "a training"
     if action == "assign":
         conn.execute(
             "INSERT OR IGNORE INTO user_training (user_id, training_id, status, assigned_at)"
             " VALUES (?, ?, 'assigned', ?)",
             (user_id, training_id, now_iso()),
         )
+        notify(conn, user_id, f"New training assigned: {tr_title}.",
+               url_for("user.trainings"))
         flash("Training assigned.", "success")
     elif action == "complete":
         conn.execute(
@@ -184,6 +194,8 @@ def update_user_training(user_id):
             " WHERE user_id = ? AND training_id = ?",
             (now_iso(), user_id, training_id),
         )
+        notify(conn, user_id, f"Your “{tr_title}” training was marked complete.",
+               url_for("user.trainings"))
         flash("Training marked complete.", "success")
     elif action == "reset":
         conn.execute(
@@ -208,6 +220,8 @@ def update_user_training(user_id):
 def quick_approve(user_id):
     conn = get_db()
     conn.execute("UPDATE users SET approved = 1, is_active = 1 WHERE id = ?", (user_id,))
+    notify(conn, user_id, "Your account has been approved — welcome aboard! 🎉",
+           url_for("user.dashboard"))
     conn.commit()
     conn.close()
     flash("Account approved.", "success")
@@ -232,6 +246,8 @@ def update_user_details(user_id):
             "UPDATE users SET name = ?, email = ?, phone = ? WHERE id = ?",
             (name, email, phone, user_id),
         )
+        notify(conn, user_id, "An administrator updated your account details.",
+               url_for("user.profile"))
         conn.commit()
         flash("Account details updated.", "success")
     conn.close()
@@ -260,6 +276,8 @@ def reset_user_password(user_id):
         "UPDATE users SET password_hash = ?, must_change_password = 1 WHERE id = ?",
         (generate_password_hash(temp, method="pbkdf2:sha256"), user_id),
     )
+    notify(conn, user_id, "An administrator reset your password. You'll be asked to "
+           "set a new one at your next sign-in.", url_for("user.dashboard"))
     conn.commit()
     conn.close()
     flash(f"Password reset for @{u['username']}. Temporary password: {temp} — "
@@ -277,12 +295,17 @@ def update_user_flags(user_id):
         flash("You cannot change your own admin/approval/active status.", "warning")
     elif action == "make_admin":
         conn.execute("UPDATE users SET is_admin = 1 WHERE id = ?", (user_id,))
+        notify(conn, user_id, "You're now an administrator. 🛠️", url_for("admin.dashboard"))
         flash("User promoted to administrator.", "success")
     elif action == "revoke_admin":
         conn.execute("UPDATE users SET is_admin = 0 WHERE id = ?", (user_id,))
+        notify(conn, user_id, "Your administrator access was removed.",
+               url_for("user.dashboard"))
         flash("Administrator rights revoked.", "info")
     elif action == "approve":
         conn.execute("UPDATE users SET approved = 1, is_active = 1 WHERE id = ?", (user_id,))
+        notify(conn, user_id, "Your account has been approved — welcome aboard! 🎉",
+               url_for("user.dashboard"))
         flash("Account approved — the user can now sign in (after verifying email).",
               "success")
     elif action == "unapprove":
@@ -296,6 +319,7 @@ def update_user_flags(user_id):
         flash("Email manually marked as verified.", "success")
     elif action == "activate":
         conn.execute("UPDATE users SET is_active = 1 WHERE id = ?", (user_id,))
+        notify(conn, user_id, "Your account was reactivated.", url_for("user.dashboard"))
         flash("User reactivated.", "success")
     elif action == "deactivate":
         conn.execute("UPDATE users SET is_active = 0 WHERE id = ?", (user_id,))
@@ -627,6 +651,14 @@ def assign(service_id):
         " VALUES (?, ?, ?, 'scheduled', ?)",
         (service_id, user_id, role_id, now_iso()),
     )
+    svc = conn.execute(
+        "SELECT title, service_date FROM services WHERE id = ?", (service_id,)
+    ).fetchone()
+    role = conn.execute("SELECT name FROM roles WHERE id = ?", (role_id,)).fetchone()
+    if svc and role:
+        notify(conn, user_id,
+               f"You're scheduled as {role['name']} for {svc['title']} on "
+               f"{svc['service_date']}.", url_for("user.service_detail", service_id=service_id))
     conn.commit()
     conn.close()
     flash("Assigned.", "success")
@@ -637,8 +669,18 @@ def assign(service_id):
 @admin_required
 def unassign(assignment_id):
     conn = get_db()
-    a = conn.execute("SELECT service_id FROM assignments WHERE id = ?", (assignment_id,)).fetchone()
+    a = conn.execute(
+        "SELECT a.service_id, a.user_id, s.title AS service_title, s.service_date,"
+        " r.name AS role_name"
+        " FROM assignments a JOIN services s ON s.id = a.service_id"
+        " JOIN roles r ON r.id = a.role_id WHERE a.id = ?",
+        (assignment_id,),
+    ).fetchone()
     conn.execute("DELETE FROM assignments WHERE id = ?", (assignment_id,))
+    if a:
+        notify(conn, a["user_id"],
+               f"You were removed from {a['service_title']} on {a['service_date']} "
+               f"({a['role_name']}).", url_for("user.services"))
     conn.commit()
     service_id = a["service_id"] if a else None
     conn.close()
@@ -687,6 +729,21 @@ def approve_swap(swap_id):
         "UPDATE swap_requests SET status = 'approved', resolved_at = ? WHERE id = ?",
         (now_iso(), swap_id),
     )
+    info = conn.execute(
+        "SELECT s.title AS service_title, s.service_date, r.name AS role_name,"
+        " s.id AS service_id"
+        " FROM assignments a JOIN services s ON s.id = a.service_id"
+        " JOIN roles r ON r.id = a.role_id WHERE a.id = ?",
+        (sw["assignment_id"],),
+    ).fetchone()
+    if info:
+        link = url_for("user.service_detail", service_id=info["service_id"])
+        notify(conn, sw["covered_by"],
+               f"Your swap was approved — you're now {info['role_name']} for "
+               f"{info['service_title']} on {info['service_date']}.", link)
+        notify(conn, sw["requested_by"],
+               f"Your swap request for {info['service_title']} was approved and covered.",
+               link)
     conn.commit()
     conn.close()
     flash("Swap approved and schedule updated.", "success")
@@ -746,8 +803,10 @@ def announcements():
                 " VALUES (?, ?, ?, 1, ?, ?)",
                 (title, body, me["id"], expires_at, now_iso()),
             )
+            notify_all(conn, f"📣 New announcement: {title}",
+                       url_for("user.dashboard"), exclude_id=me["id"])
             conn.commit()
-            flash("Announcement posted.", "success")
+            flash("Announcement posted and the team was notified.", "success")
         else:
             flash("Title and message are required.", "danger")
         conn.close()
@@ -756,6 +815,26 @@ def announcements():
     items = get_announcements(conn, active_only=False)
     conn.close()
     return render_template("admin/announcements.html", items=items, today=date.today().isoformat())
+
+
+@bp.route("/announcements/<int:ann_id>/edit", methods=["POST"])
+@admin_required
+def edit_announcement(ann_id):
+    conn = get_db()
+    title = request.form.get("title", "").strip()
+    body = request.form.get("body", "").strip()
+    expires_at = request.form.get("expires_at", "").strip() or None
+    if title and body:
+        conn.execute(
+            "UPDATE announcements SET title = ?, body = ?, expires_at = ? WHERE id = ?",
+            (title, body, expires_at, ann_id),
+        )
+        conn.commit()
+        flash("Announcement updated.", "success")
+    else:
+        flash("Title and message are required.", "danger")
+    conn.close()
+    return redirect(url_for("admin.announcements"))
 
 
 @bp.route("/announcements/<int:ann_id>/toggle", methods=["POST"])

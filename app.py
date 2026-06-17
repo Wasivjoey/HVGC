@@ -67,6 +67,20 @@ def create_app():
     def inject_user():
         return {"current_user": current_user()}
 
+    @app.context_processor
+    def inject_notifications():
+        from db import get_db
+        from helpers import unread_notification_count
+        user = current_user()
+        if not user:
+            return {"unread_notifications": 0}
+        conn = get_db()
+        try:
+            count = unread_notification_count(conn, user["id"])
+        finally:
+            conn.close()
+        return {"unread_notifications": count}
+
     # If an admin reset a user's password, force them to set a new one before
     # they can use anything else.
     @app.before_request

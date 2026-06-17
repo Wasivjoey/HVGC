@@ -124,6 +124,37 @@ def vote_poll(poll_id):
     return redirect(url_for("user.dashboard"))
 
 
+@bp.route("/notifications")
+@login_required
+def notifications():
+    user = current_user()
+    conn = get_db()
+    items = conn.execute(
+        "SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 100",
+        (user["id"],),
+    ).fetchall()
+    # Mark everything read once viewed (the list still highlights what was new).
+    conn.execute(
+        "UPDATE notifications SET is_read = 1 WHERE user_id = ? AND is_read = 0",
+        (user["id"],),
+    )
+    conn.commit()
+    conn.close()
+    return render_template("notifications.html", items=items)
+
+
+@bp.route("/notifications/clear", methods=["POST"])
+@login_required
+def clear_notifications():
+    user = current_user()
+    conn = get_db()
+    conn.execute("DELETE FROM notifications WHERE user_id = ?", (user["id"],))
+    conn.commit()
+    conn.close()
+    flash("Notifications cleared.", "info")
+    return redirect(url_for("user.notifications"))
+
+
 # ----------------------------------------------------------------- availability
 @bp.route("/availability", methods=["GET", "POST"])
 @login_required

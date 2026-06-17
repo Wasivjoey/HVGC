@@ -30,6 +30,7 @@
     <nav>
       <p class="nav-label">Volunteer</p>
       <a href="{{ url_for('user.dashboard') }}" class="{{ 'active' if request.endpoint == 'user.dashboard' }}">📊 Dashboard</a>
+      <a href="{{ url_for('user.notifications') }}" class="{{ 'active' if request.endpoint == 'user.notifications' }}">🔔 Notifications{% if unread_notifications %} <span class="nav-badge">{{ unread_notifications }}</span>{% endif %}</a>
       <a href="{{ url_for('user.availability') }}" class="{{ 'active' if request.endpoint == 'user.availability' }}">📅 My Availability</a>
       <a href="{{ url_for('user.services') }}" class="{{ 'active' if request.endpoint in ['user.services','user.service_detail'] }}">⛪ Services</a>
       <a href="{{ url_for('user.swaps') }}" class="{{ 'active' if request.endpoint == 'user.swaps' }}">🔁 Role Swaps</a>

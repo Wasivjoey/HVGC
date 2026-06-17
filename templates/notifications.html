@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Notifications · HVGC LINEUP{% endblock %}
+{% block body %}
+<div class="page-head">
+  <div>
+    <h1>🔔 Notifications</h1>
+    <p>Updates about your roles, training, schedule, and team announcements.</p>
+  </div>
+  {% if items %}
+  <form method="post" action="{{ url_for('user.clear_notifications') }}" onsubmit="return confirm('Clear all notifications?');">
+    <button class="btn btn-ghost">Clear all</button>
+  </form>
+  {% endif %}
+</div>
+
+<div class="card">
+  {% if items %}
+    {% for n in items %}
+    <div class="list-item">
+      <div>
+        {% if not n['is_read'] %}<span class="dot dot-green" title="New"></span> {% endif %}
+        {% if n['link'] %}<a href="{{ n['link'] }}">{{ n['body'] }}</a>{% else %}{{ n['body'] }}{% endif %}
+        <br><span class="meta">{{ n['created_at']|pretty_dt }}</span>
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="empty">You're all caught up — no notifications.</div>
+  {% endif %}
+</div>
+{% endblock %}
