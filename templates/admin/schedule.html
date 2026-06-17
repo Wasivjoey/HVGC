@@ -55,6 +55,8 @@
         <div>
           {% if c['already'] %}
             <span class="badge badge-blue">Assigned</span>
+          {% elif c['busy_role'] %}
+            <span class="badge badge-gray" title="Already serving this service">Serving as {{ c['busy_role'] }}</span>
           {% else %}
             <form method="post" action="{{ url_for('admin.assign', service_id=service['id']) }}" class="inline-form">
               <input type="hidden" name="user_id" value="{{ c['u']['id'] }}">

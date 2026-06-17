@@ -601,6 +601,8 @@ def schedule(service_id):
         (service_id,),
     ).fetchall()
     assigned_pairs = {(a["user_id"], a["role_id"]) for a in roster}
+    # user_id -> the role they already hold in this service (for one-role-per-service)
+    serving_role = {a["user_id"]: a["role_name"] for a in roster}
 
     # For each role, list candidates and tag whether they're qualified and
     # available on the service date.
@@ -621,11 +623,14 @@ def schedule(service_id):
         cand_view = []
         for c in candidates:
             av = avail_map.get(c["id"])
+            already = (c["id"], r["id"]) in assigned_pairs
             cand_view.append({
                 "u": c,
                 "qualified": is_qualified(conn, c["id"], r["id"]),
                 "availability": av["status"] if av else None,
-                "already": (c["id"], r["id"]) in assigned_pairs,
+                "already": already,
+                # Serving a *different* role in this service → can't take this one.
+                "busy_role": serving_role.get(c["id"]) if not already else None,
             })
         role_board.append({"role": r, "candidates": cand_view})
 
@@ -647,6 +652,18 @@ def assign(service_id):
         conn.close()
         flash("That person is not qualified for this role yet (training incomplete).",
               "warning")
+        return redirect(url_for("admin.schedule", service_id=service_id))
+
+    # One role per person per service: block if they already hold a slot here.
+    existing = conn.execute(
+        "SELECT r.name FROM assignments a JOIN roles r ON r.id = a.role_id"
+        " WHERE a.service_id = ? AND a.user_id = ?",
+        (service_id, user_id),
+    ).fetchone()
+    if existing:
+        conn.close()
+        flash(f"That person is already serving as {existing['name']} for this service. "
+              "Remove them from that role first to reassign.", "warning")
         return redirect(url_for("admin.schedule", service_id=service_id))
 
     conn.execute(
@@ -724,6 +741,20 @@ def approve_swap(swap_id):
         conn.close()
         flash("This swap has no volunteer to approve yet.", "warning")
         return redirect(url_for("admin.swaps"))
+
+    # The volunteer must not already serve another role in the same service.
+    conflict = conn.execute(
+        "SELECT r.name FROM assignments a JOIN roles r ON r.id = a.role_id"
+        " WHERE a.service_id = (SELECT service_id FROM assignments WHERE id = ?)"
+        " AND a.user_id = ? AND a.id <> ?",
+        (sw["assignment_id"], sw["covered_by"], sw["assignment_id"]),
+    ).fetchone()
+    if conflict:
+        conn.close()
+        flash(f"Can't approve — the volunteer is already serving as {conflict['name']} "
+              "for this service.", "warning")
+        return redirect(url_for("admin.swaps"))
+
     # Reassign the underlying slot to the volunteer.
     conn.execute(
         "UPDATE assignments SET user_id = ?, status = 'scheduled' WHERE id = ?",

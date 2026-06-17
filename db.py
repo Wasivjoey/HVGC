@@ -372,6 +372,23 @@ def _migrate(conn):
         conn.execute("ALTER TABLE users ADD COLUMN email_opt_in INTEGER NOT NULL DEFAULT 1")
         conn.commit()
 
+    # Enforce "one role per user per service" at the database level. Only create
+    # the unique index when existing data doesn't already violate it (otherwise we
+    # rely on the application-level guard and leave current data untouched).
+    dupes = conn.execute(
+        "SELECT COUNT(*) AS c FROM (SELECT service_id, user_id FROM assignments"
+        " GROUP BY service_id, user_id HAVING COUNT(*) > 1) d"
+    ).fetchone()["c"]
+    if dupes == 0:
+        try:
+            conn.execute(
+                "CREATE UNIQUE INDEX IF NOT EXISTS idx_assign_service_user"
+                " ON assignments(service_id, user_id)"
+            )
+            conn.commit()
+        except Exception:
+            pass
+
 
 def _seed(conn):
     # Seed default AV roles once.
