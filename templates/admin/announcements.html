@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Announcements · Admin{% endblock %}
+{% block body %}
+<div class="page-head">
+  <div>
+    <h1>Announcements</h1>
+    <p>Post messages that appear on every volunteer's dashboard.</p>
+  </div>
+</div>
+
+<div class="grid grid-2">
+  <div class="card" style="align-self:start;">
+    <h3>+ New announcement</h3>
+    <form method="post">
+      <label for="title">Title</label>
+      <input type="text" id="title" name="title" placeholder="e.g. Christmas rehearsal moved" required>
+      <label for="body">Message</label>
+      <textarea id="body" name="body" placeholder="What you want the team to know" required></textarea>
+      <label for="expires_at">Hide after <span class="muted">(optional)</span></label>
+      <input type="date" id="expires_at" name="expires_at" min="{{ today }}">
+      <button class="btn" style="margin-top:14px;">Post announcement</button>
+    </form>
+  </div>
+
+  <div>
+    {% if items %}
+      {% for a in items %}
+      <div class="card">
+        <div class="list-item" style="border:none;padding:0;">
+          <div>
+            <strong>{{ a['title'] }}</strong>
+            {% if a['active'] %}<span class="badge badge-green">Live</span>{% else %}<span class="badge badge-gray">Hidden</span>{% endif %}
+            {% if a['expires_at'] %}<span class="badge badge-amber">Until {{ a['expires_at']|pretty_date }}</span>{% endif %}
+            <br><span class="note-body meta">{{ a['body'] }}</span>
+            <br><span class="meta">{{ a['author'] or 'Admin' }} · {{ a['created_at']|pretty_dt }}</span>
+          </div>
+        </div>
+        <div class="row-actions" style="margin-top:10px;">
+          <form method="post" action="{{ url_for('admin.toggle_announcement', ann_id=a['id']) }}" class="inline-form">
+            <button class="btn btn-sm btn-ghost">{{ 'Hide' if a['active'] else 'Show' }}</button>
+          </form>
+          <form method="post" action="{{ url_for('admin.delete_announcement', ann_id=a['id']) }}" class="inline-form" onsubmit="return confirm('Delete this announcement?');">
+            <button class="btn btn-sm btn-red">Delete</button>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="card"><div class="empty">No announcements yet.</div></div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

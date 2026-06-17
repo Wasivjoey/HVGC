@@ -5,6 +5,7 @@ import os
 import re
 import smtplib
 import uuid
+from datetime import date
 from email.message import EmailMessage
 from functools import wraps
 from urllib.parse import urlparse, parse_qs
@@ -12,7 +13,7 @@ from urllib.parse import urlparse, parse_qs
 from flask import session, redirect, url_for, flash, g, current_app
 from werkzeug.utils import secure_filename
 
-from db import get_db
+from db import get_db, now_iso
 
 
 def send_email(to_address, subject, body):
@@ -240,6 +241,69 @@ def is_qualified(conn, user_id, role_id):
         return False
     required, completed = role_training_status(conn, user_id, role_id)
     return completed >= required
+
+
+def get_announcements(conn, active_only=True):
+    """Announcements for display. active_only filters to live, unexpired ones."""
+    if active_only:
+        return conn.execute(
+            "SELECT a.*, u.name AS author FROM announcements a"
+            " LEFT JOIN users u ON u.id = a.created_by"
+            " WHERE a.active = 1 AND (a.expires_at IS NULL OR a.expires_at >= ?)"
+            " ORDER BY a.created_at DESC",
+            (date.today().isoformat(),),
+        ).fetchall()
+    return conn.execute(
+        "SELECT a.*, u.name AS author FROM announcements a"
+        " LEFT JOIN users u ON u.id = a.created_by ORDER BY a.created_at DESC"
+    ).fetchall()
+
+
+def poll_is_open(poll, now_str=None):
+    if poll["closed"]:
+        return False
+    now_str = now_str or now_iso()
+    return not poll["closes_at"] or poll["closes_at"] >= now_str
+
+
+def get_polls(conn, user_id=None, only_open=False):
+    """Return polls with their options, vote counts/percentages, the current
+    user's choice, and whether the poll is still open."""
+    now = now_iso()
+    result = []
+    for p in conn.execute("SELECT * FROM polls ORDER BY created_at DESC").fetchall():
+        is_open = poll_is_open(p, now)
+        if only_open and not is_open:
+            continue
+        opts = conn.execute(
+            "SELECT * FROM poll_options WHERE poll_id = ? ORDER BY position, id",
+            (p["id"],),
+        ).fetchall()
+        counts = {o["id"]: 0 for o in opts}
+        for v in conn.execute(
+            "SELECT option_id, COUNT(*) AS c FROM poll_votes WHERE poll_id = ?"
+            " GROUP BY option_id", (p["id"],)
+        ).fetchall():
+            counts[v["option_id"]] = v["c"]
+        total = sum(counts.values())
+        user_opt = None
+        if user_id is not None:
+            uv = conn.execute(
+                "SELECT option_id FROM poll_votes WHERE poll_id = ? AND user_id = ?",
+                (p["id"], user_id),
+            ).fetchone()
+            user_opt = uv["option_id"] if uv else None
+        result.append({
+            "poll": p,
+            "open": is_open,
+            "total": total,
+            "user_option_id": user_opt,
+            "options": [{
+                "id": o["id"], "text": o["text"], "votes": counts[o["id"]],
+                "pct": round(counts[o["id"]] * 100 / total) if total else 0,
+            } for o in opts],
+        })
+    return result
 
 
 def qualified_users_for_role(conn, role_id):

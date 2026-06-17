@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Polls · Admin{% endblock %}
+{% block body %}
+<div class="page-head">
+  <div>
+    <h1>Polls</h1>
+    <p>Ask the team a question. Open polls appear on every volunteer's dashboard.</p>
+  </div>
+</div>
+
+<div class="grid grid-2">
+  <div class="card" style="align-self:start;">
+    <h3>+ New poll</h3>
+    <form method="post">
+      <label for="question">Question</label>
+      <input type="text" id="question" name="question" placeholder="e.g. Which training night works best?" required>
+      <label>Options <span class="muted">(at least two)</span></label>
+      <input type="text" name="option" placeholder="Option 1" style="margin-bottom:6px;">
+      <input type="text" name="option" placeholder="Option 2" style="margin-bottom:6px;">
+      <input type="text" name="option" placeholder="Option 3 (optional)" style="margin-bottom:6px;">
+      <input type="text" name="option" placeholder="Option 4 (optional)" style="margin-bottom:6px;">
+      <input type="text" name="option" placeholder="Option 5 (optional)">
+      <label for="days">Open for</label>
+      <select id="days" name="days">
+        <option value="1">1 day</option>
+        <option value="3">3 days</option>
+        <option value="7" selected>1 week</option>
+        <option value="14">2 weeks</option>
+        <option value="30">1 month</option>
+      </select>
+      <button class="btn" style="margin-top:14px;">Create poll</button>
+    </form>
+  </div>
+
+  <div>
+    {% if poll_view %}
+      {% for p in poll_view %}
+      <div class="card">
+        <div class="list-item" style="border:none;padding:0;">
+          <div><strong>{{ p['poll']['question'] }}</strong>
+            {% if p['open'] %}<span class="badge badge-green">Open</span>{% else %}<span class="badge badge-gray">Closed</span>{% endif %}
+          </div>
+        </div>
+        {% for o in p['options'] %}
+        <div style="margin:8px 0;">
+          <div style="display:flex;justify-content:space-between;font-size:14px;">
+            <span>{{ o['text'] }}</span><span class="muted">{{ o['pct'] }}% · {{ o['votes'] }}</span>
+          </div>
+          <div class="poll-bar"><div class="poll-bar-fill" style="width:{{ o['pct'] }}%;"></div></div>
+        </div>
+        {% endfor %}
+        <p class="meta" style="margin:8px 0 0;">{{ p['total'] }} response{{ 's' if p['total'] != 1 }}
+          {% if p['poll']['closes_at'] %}· closes {{ p['poll']['closes_at']|pretty_dt }}{% endif %}</p>
+        <div class="row-actions" style="margin-top:10px;">
+          {% if p['open'] %}
+          <form method="post" action="{{ url_for('admin.close_poll', poll_id=p['poll']['id']) }}" class="inline-form">
+            <button class="btn btn-sm btn-ghost">Close now</button>
+          </form>
+          {% else %}
+          <form method="post" action="{{ url_for('admin.reopen_poll', poll_id=p['poll']['id']) }}" class="inline-form">
+            <button class="btn btn-sm btn-ghost">Reopen</button>
+          </form>
+          {% endif %}
+          <form method="post" action="{{ url_for('admin.delete_poll', poll_id=p['poll']['id']) }}" class="inline-form" onsubmit="return confirm('Delete this poll and its responses?');">
+            <button class="btn btn-sm btn-red">Delete</button>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="card"><div class="empty">No polls yet.</div></div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

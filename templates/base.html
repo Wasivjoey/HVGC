@@ -46,6 +46,8 @@
       <a href="{{ url_for('admin.services') }}" class="{{ 'active' if request.endpoint in ['admin.services','admin.schedule'] }}">🗓️ Schedule</a>
       <a href="{{ url_for('admin.availability') }}" class="{{ 'active' if request.endpoint == 'admin.availability' }}">🟢 Availability Grid</a>
       <a href="{{ url_for('admin.swaps') }}" class="{{ 'active' if request.endpoint == 'admin.swaps' }}">🔁 Swap Approvals</a>
+      <a href="{{ url_for('admin.announcements') }}" class="{{ 'active' if request.endpoint == 'admin.announcements' }}">📣 Announcements</a>
+      <a href="{{ url_for('admin.polls') }}" class="{{ 'active' if request.endpoint == 'admin.polls' }}">📊 Polls</a>
       {% endif %}
     </nav>
 

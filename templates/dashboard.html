@@ -9,6 +9,50 @@
   <a href="{{ url_for('user.availability') }}" class="btn">Update availability</a>
 </div>
 
+{% if announcements %}
+{% for a in announcements %}
+<div class="card" style="border-left:4px solid var(--brand);">
+  <h3 style="margin-bottom:4px;">📣 {{ a['title'] }}</h3>
+  <p class="note-body" style="margin:0;">{{ a['body'] }}</p>
+  <p class="meta" style="margin:8px 0 0;">{{ a['author'] or 'Admin' }} · {{ a['created_at']|pretty_dt }}</p>
+</div>
+{% endfor %}
+{% endif %}
+
+{% if polls %}
+{% for p in polls %}
+<div class="card" style="border-left:4px solid var(--green);">
+  <h3 style="margin-bottom:6px;">📊 {{ p['poll']['question'] }}</h3>
+  {% if p['user_option_id'] or not p['open'] %}
+    {# Already responded, or poll closed: show results #}
+    {% for o in p['options'] %}
+    <div style="margin:8px 0;">
+      <div style="display:flex;justify-content:space-between;font-size:14px;">
+        <span>{{ o['text'] }}{% if o['id'] == p['user_option_id'] %} <span class="badge badge-green">Your pick</span>{% endif %}</span>
+        <span class="muted">{{ o['pct'] }}% · {{ o['votes'] }}</span>
+      </div>
+      <div class="poll-bar"><div class="poll-bar-fill" style="width:{{ o['pct'] }}%;"></div></div>
+    </div>
+    {% endfor %}
+    <p class="meta" style="margin-top:8px;">{{ p['total'] }} response{{ 's' if p['total'] != 1 }}
+      {% if p['open'] %}· you've responded{% else %}· closed{% endif %}</p>
+  {% else %}
+    {# Open and not yet answered: show voting form #}
+    <form method="post" action="{{ url_for('user.vote_poll', poll_id=p['poll']['id']) }}">
+      {% for o in p['options'] %}
+      <label class="poll-choice">
+        <input type="radio" name="option_id" value="{{ o['id'] }}" required>
+        <span>{{ o['text'] }}</span>
+      </label>
+      {% endfor %}
+      <button class="btn btn-sm btn-green" style="margin-top:10px;">Submit response</button>
+      {% if p['poll']['closes_at'] %}<p class="meta" style="margin-top:8px;">Closes {{ p['poll']['closes_at']|pretty_dt }}</p>{% endif %}
+    </form>
+  {% endif %}
+</div>
+{% endfor %}
+{% endif %}
+
 {% if pending_training %}
 <div class="card" style="border-left:4px solid var(--amber);">
   <h3>⚠️ Training to complete before you can serve</h3>

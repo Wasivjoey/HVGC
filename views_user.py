@@ -14,7 +14,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from db import get_db, now_iso
 from helpers import (
     login_required, current_user, role_training_status, is_qualified, parse_video,
-    save_avatar, delete_avatar, avatars_dir,
+    save_avatar, delete_avatar, avatars_dir, get_announcements, get_polls, poll_is_open,
 )
 
 bp = Blueprint("user", __name__)
@@ -76,6 +76,9 @@ def dashboard():
         role_status.append({"role": r, "required": req, "completed": done,
                             "qualified": done >= req})
 
+    announcements = get_announcements(conn, active_only=True)
+    polls = get_polls(conn, user_id=user["id"], only_open=True)
+
     conn.close()
     return render_template(
         "dashboard.html",
@@ -83,7 +86,42 @@ def dashboard():
         pending_training=pending_training,
         coverable=coverable,
         role_status=role_status,
+        announcements=announcements,
+        polls=polls,
     )
+
+
+@bp.route("/polls/<int:poll_id>/vote", methods=["POST"])
+@login_required
+def vote_poll(poll_id):
+    user = current_user()
+    conn = get_db()
+    poll = conn.execute("SELECT * FROM polls WHERE id = ?", (poll_id,)).fetchone()
+    if poll is None:
+        conn.close()
+        flash("Poll not found.", "danger")
+        return redirect(url_for("user.dashboard"))
+    if not poll_is_open(poll):
+        conn.close()
+        flash("That poll has closed.", "warning")
+        return redirect(url_for("user.dashboard"))
+    option_id = request.form.get("option_id", "")
+    valid = conn.execute(
+        "SELECT id FROM poll_options WHERE id = ? AND poll_id = ?", (option_id, poll_id)
+    ).fetchone()
+    if valid:
+        # One response per user; a repeat is ignored by the unique constraint.
+        conn.execute(
+            "INSERT OR IGNORE INTO poll_votes (poll_id, option_id, user_id, created_at)"
+            " VALUES (?, ?, ?, ?)",
+            (poll_id, option_id, user["id"], now_iso()),
+        )
+        conn.commit()
+        flash("Thanks for your response!", "success")
+    else:
+        flash("Please choose an option.", "warning")
+    conn.close()
+    return redirect(url_for("user.dashboard"))
 
 
 # ----------------------------------------------------------------- availability

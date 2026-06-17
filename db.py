@@ -138,6 +138,43 @@ CREATE TABLE IF NOT EXISTS service_notes (
     body       TEXT NOT NULL,
     created_at TEXT NOT NULL
 );
+
+-- Admin announcements shown on the volunteer dashboard.
+CREATE TABLE IF NOT EXISTS announcements (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    title      TEXT NOT NULL,
+    body       TEXT NOT NULL,
+    created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    active     INTEGER NOT NULL DEFAULT 1,
+    expires_at TEXT,                       -- optional YYYY-MM-DD; null = no expiry
+    created_at TEXT NOT NULL
+);
+
+-- Admin-created polls with a closing time; volunteers respond once each.
+CREATE TABLE IF NOT EXISTS polls (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    question   TEXT NOT NULL,
+    created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    closes_at  TEXT,                        -- ISO datetime voting closes
+    closed     INTEGER NOT NULL DEFAULT 0,  -- manual close override
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS poll_options (
+    id       INTEGER PRIMARY KEY AUTOINCREMENT,
+    poll_id  INTEGER NOT NULL REFERENCES polls(id) ON DELETE CASCADE,
+    text     TEXT NOT NULL,
+    position INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS poll_votes (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    poll_id    INTEGER NOT NULL REFERENCES polls(id) ON DELETE CASCADE,
+    option_id  INTEGER NOT NULL REFERENCES poll_options(id) ON DELETE CASCADE,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TEXT NOT NULL,
+    UNIQUE(poll_id, user_id)
+);
 """
 
 

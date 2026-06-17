@@ -2,17 +2,18 @@
 scheduling, and swap approvals."""
 
 import secrets
-from datetime import date
+from datetime import date, datetime, timedelta
 
 from flask import (
     Blueprint, render_template, request, redirect, url_for, flash,
 )
 from werkzeug.security import generate_password_hash
 
-from db import get_db, now_iso
+from db import get_db, now_iso, execute_returning_id
 from helpers import (
     admin_required, current_user, role_training_status, is_qualified,
     qualified_users_for_role, save_document, delete_document,
+    get_announcements, get_polls,
 )
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
@@ -727,3 +728,128 @@ def availability():
     return render_template(
         "admin/availability.html", services=services, users=users, avail=avail,
     )
+
+
+# --------------------------------------------------------------- announcements
+@bp.route("/announcements", methods=["GET", "POST"])
+@admin_required
+def announcements():
+    me = current_user()
+    conn = get_db()
+    if request.method == "POST":
+        title = request.form.get("title", "").strip()
+        body = request.form.get("body", "").strip()
+        expires_at = request.form.get("expires_at", "").strip() or None
+        if title and body:
+            conn.execute(
+                "INSERT INTO announcements (title, body, created_by, active, expires_at, created_at)"
+                " VALUES (?, ?, ?, 1, ?, ?)",
+                (title, body, me["id"], expires_at, now_iso()),
+            )
+            conn.commit()
+            flash("Announcement posted.", "success")
+        else:
+            flash("Title and message are required.", "danger")
+        conn.close()
+        return redirect(url_for("admin.announcements"))
+
+    items = get_announcements(conn, active_only=False)
+    conn.close()
+    return render_template("admin/announcements.html", items=items, today=date.today().isoformat())
+
+
+@bp.route("/announcements/<int:ann_id>/toggle", methods=["POST"])
+@admin_required
+def toggle_announcement(ann_id):
+    conn = get_db()
+    conn.execute("UPDATE announcements SET active = 1 - active WHERE id = ?", (ann_id,))
+    conn.commit()
+    conn.close()
+    flash("Announcement updated.", "info")
+    return redirect(url_for("admin.announcements"))
+
+
+@bp.route("/announcements/<int:ann_id>/delete", methods=["POST"])
+@admin_required
+def delete_announcement(ann_id):
+    conn = get_db()
+    conn.execute("DELETE FROM announcements WHERE id = ?", (ann_id,))
+    conn.commit()
+    conn.close()
+    flash("Announcement deleted.", "info")
+    return redirect(url_for("admin.announcements"))
+
+
+# ----------------------------------------------------------------------- polls
+@bp.route("/polls", methods=["GET", "POST"])
+@admin_required
+def polls():
+    me = current_user()
+    conn = get_db()
+    if request.method == "POST":
+        question = request.form.get("question", "").strip()
+        options = [o.strip() for o in request.form.getlist("option") if o.strip()]
+        try:
+            days = int(request.form.get("days", "7"))
+        except ValueError:
+            days = 7
+        days = max(1, min(days, 90))
+        if not question or len(options) < 2:
+            flash("A question and at least two options are required.", "danger")
+            conn.close()
+            return redirect(url_for("admin.polls"))
+        closes_at = (datetime.utcnow() + timedelta(days=days)).isoformat(timespec="seconds")
+        poll_id = execute_returning_id(
+            conn,
+            "INSERT INTO polls (question, created_by, closes_at, closed, created_at)"
+            " VALUES (?, ?, ?, 0, ?)",
+            (question, me["id"], closes_at, now_iso()),
+        )
+        for i, text in enumerate(options):
+            conn.execute(
+                "INSERT INTO poll_options (poll_id, text, position) VALUES (?, ?, ?)",
+                (poll_id, text, i),
+            )
+        conn.commit()
+        flash(f"Poll created — open for {days} day{'s' if days != 1 else ''}.", "success")
+        conn.close()
+        return redirect(url_for("admin.polls"))
+
+    poll_view = get_polls(conn, user_id=me["id"])
+    conn.close()
+    return render_template("admin/polls.html", poll_view=poll_view)
+
+
+@bp.route("/polls/<int:poll_id>/close", methods=["POST"])
+@admin_required
+def close_poll(poll_id):
+    conn = get_db()
+    conn.execute("UPDATE polls SET closed = 1 WHERE id = ?", (poll_id,))
+    conn.commit()
+    conn.close()
+    flash("Poll closed.", "info")
+    return redirect(url_for("admin.polls"))
+
+
+@bp.route("/polls/<int:poll_id>/reopen", methods=["POST"])
+@admin_required
+def reopen_poll(poll_id):
+    # Reopen and extend the closing time a week out so it isn't instantly closed.
+    new_close = (datetime.utcnow() + timedelta(days=7)).isoformat(timespec="seconds")
+    conn = get_db()
+    conn.execute("UPDATE polls SET closed = 0, closes_at = ? WHERE id = ?", (new_close, poll_id))
+    conn.commit()
+    conn.close()
+    flash("Poll reopened for 7 more days.", "success")
+    return redirect(url_for("admin.polls"))
+
+
+@bp.route("/polls/<int:poll_id>/delete", methods=["POST"])
+@admin_required
+def delete_poll(poll_id):
+    conn = get_db()
+    conn.execute("DELETE FROM polls WHERE id = ?", (poll_id,))
+    conn.commit()
+    conn.close()
+    flash("Poll deleted.", "info")
+    return redirect(url_for("admin.polls"))
