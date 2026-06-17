@@ -281,6 +281,42 @@ def _connect_with_retry(attempts=15, delay=2):
     raise last
 
 
+def ensure_one_role_index(conn):
+    """Create the one-role-per-service unique index when the data allows it.
+
+    Returns True if the index exists afterwards, False if it can't be created
+    yet (because some user is already assigned multiple roles in a service).
+    Safe to call repeatedly — used at boot and opportunistically from the admin
+    dashboard once conflicts are cleared.
+    """
+    if USE_PG:
+        exists = conn.execute(
+            "SELECT 1 FROM pg_indexes WHERE indexname = 'idx_assign_service_user'"
+        ).fetchone()
+    else:
+        exists = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'index'"
+            " AND name = 'idx_assign_service_user'"
+        ).fetchone()
+    if exists:
+        return True
+    dupes = conn.execute(
+        "SELECT COUNT(*) AS c FROM (SELECT service_id, user_id FROM assignments"
+        " GROUP BY service_id, user_id HAVING COUNT(*) > 1) d"
+    ).fetchone()["c"]
+    if dupes:
+        return False
+    try:
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_assign_service_user"
+            " ON assignments(service_id, user_id)"
+        )
+        conn.commit()
+        return True
+    except Exception:
+        return False
+
+
 def init_db():
     """Create tables (idempotent) and seed first-run data.
 
@@ -372,22 +408,9 @@ def _migrate(conn):
         conn.execute("ALTER TABLE users ADD COLUMN email_opt_in INTEGER NOT NULL DEFAULT 1")
         conn.commit()
 
-    # Enforce "one role per user per service" at the database level. Only create
-    # the unique index when existing data doesn't already violate it (otherwise we
-    # rely on the application-level guard and leave current data untouched).
-    dupes = conn.execute(
-        "SELECT COUNT(*) AS c FROM (SELECT service_id, user_id FROM assignments"
-        " GROUP BY service_id, user_id HAVING COUNT(*) > 1) d"
-    ).fetchone()["c"]
-    if dupes == 0:
-        try:
-            conn.execute(
-                "CREATE UNIQUE INDEX IF NOT EXISTS idx_assign_service_user"
-                " ON assignments(service_id, user_id)"
-            )
-            conn.commit()
-        except Exception:
-            pass
+    # Enforce "one role per user per service" at the database level (only when
+    # existing data allows it).
+    ensure_one_role_index(conn)
 
 
 def _seed(conn):

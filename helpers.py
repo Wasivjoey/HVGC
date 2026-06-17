@@ -291,6 +291,33 @@ def unread_notification_count(conn, user_id):
     ).fetchone()["c"]
 
 
+def assignment_conflicts(conn):
+    """Pre-existing data where a user holds more than one role in a service.
+
+    Returned as a list of dicts (service/user/roles). Portable across SQLite and
+    Postgres — grouped in Python rather than with GROUP_CONCAT/string_agg.
+    """
+    rows = conn.execute(
+        "SELECT a.service_id, a.user_id, u.name AS user_name,"
+        " s.title AS service_title, s.service_date, r.name AS role_name"
+        " FROM assignments a"
+        " JOIN users u ON u.id = a.user_id"
+        " JOIN services s ON s.id = a.service_id"
+        " JOIN roles r ON r.id = a.role_id"
+        " ORDER BY a.service_id, u.name, r.name"
+    ).fetchall()
+    grouped = {}
+    for row in rows:
+        key = (row["service_id"], row["user_id"])
+        g = grouped.setdefault(key, {
+            "service_id": row["service_id"], "user_id": row["user_id"],
+            "user_name": row["user_name"], "service_title": row["service_title"],
+            "service_date": row["service_date"], "roles": [],
+        })
+        g["roles"].append(row["role_name"])
+    return [g for g in grouped.values() if len(g["roles"]) > 1]
+
+
 def get_announcements(conn, active_only=True):
     """Announcements for display. active_only filters to live, unexpired ones."""
     if active_only:

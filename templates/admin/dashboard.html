@@ -19,6 +19,25 @@
   <div class="stat"><div class="n">{{ stats['pending_approvals'] }}</div><div class="l">Pending approvals</div></div>
 </div>
 
+{% if conflicts %}
+<div class="card" style="border-left:4px solid var(--red);margin-top:18px;">
+  <h3>⚠️ Scheduling conflicts to resolve</h3>
+  <p class="muted" style="font-size:13px;margin-top:0;">These people are assigned to more than one
+  role in the same service (from before the one-role-per-service rule). Remove the extra roles to
+  fix it — once all conflicts are cleared the rule is enforced automatically.</p>
+  {% for c in conflicts %}
+  <div class="list-item">
+    <div>
+      <strong>{{ c['user_name'] }}</strong> — {{ c['service_title'] }}
+      <span class="meta">({{ c['service_date']|pretty_date }})</span><br>
+      <span class="meta">Roles: {{ c['roles']|join(', ') }}</span>
+    </div>
+    <a href="{{ url_for('admin.schedule', service_id=c['service_id']) }}" class="btn btn-sm btn-red">Fix</a>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
 {% if pending %}
 <div class="card" style="border-left:4px solid var(--amber);margin-top:18px;">
   <h3>🆕 New sign-ups awaiting approval</h3>

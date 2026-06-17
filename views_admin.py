@@ -9,11 +9,11 @@ from flask import (
 )
 from werkzeug.security import generate_password_hash
 
-from db import get_db, now_iso, execute_returning_id
+from db import get_db, now_iso, execute_returning_id, ensure_one_role_index
 from helpers import (
     admin_required, current_user, role_training_status, is_qualified,
     qualified_users_for_role, save_document, delete_document,
-    get_announcements, get_polls, notify, notify_all,
+    get_announcements, get_polls, notify, notify_all, assignment_conflicts,
 )
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
@@ -61,9 +61,16 @@ def dashboard():
         " LEFT JOIN users cov ON cov.id = sw.covered_by"
         " WHERE sw.status IN ('open','volunteered') ORDER BY sw.created_at DESC",
     ).fetchall()
+    # Flag any pre-existing data where someone holds multiple roles in a service.
+    # If there are none, opportunistically activate the DB-level constraint so it
+    # turns on after cleanup without needing a redeploy.
+    conflicts = assignment_conflicts(conn)
+    if not conflicts:
+        ensure_one_role_index(conn)
+
     conn.close()
     return render_template("admin/dashboard.html", stats=stats, upcoming=upcoming,
-                           swaps=swaps, pending=pending)
+                           swaps=swaps, pending=pending, conflicts=conflicts)
 
 
 # ------------------------------------------------------------------------- users
