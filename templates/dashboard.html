@@ -1,12 +1,40 @@
 {% extends "base.html" %}
 {% block title %}Dashboard · HVGC LINEUP{% endblock %}
 {% block body %}
-<div class="page-head">
-  <div>
-    <h1>Hi, {{ current_user['name'].split()[0] }} 👋</h1>
-    <p>Here's what's coming up for you on the AV team.</p>
+{% set qualified_count = role_status | selectattr('qualified') | list | length %}
+
+<div class="hero">
+  <div class="hero-left">
+    {% if current_user['avatar'] %}
+    <img class="hero-avatar" src="{{ url_for('user.user_avatar', user_id=current_user['id']) }}" alt="">
+    {% else %}
+    <span class="hero-avatar">{{ current_user['name'][0]|upper }}</span>
+    {% endif %}
+    <div>
+      <h1>Hi, {{ current_user['name'].split()[0] }} 👋</h1>
+      <p class="hero-sub">{{ today|pretty_date }} · here's your serving snapshot</p>
+    </div>
   </div>
-  <a href="{{ url_for('user.availability') }}" class="btn">Update availability</a>
+  <a href="{{ url_for('user.availability') }}" class="btn">📅 Update availability</a>
+</div>
+
+<div class="dash-stats">
+  <a class="tile" href="{{ url_for('user.services') }}">
+    <span class="tile-ic ic-blue">📅</span>
+    <span><span class="tile-n">{{ upcoming|length }}</span><div class="tile-l">Upcoming assignments</div></span>
+  </a>
+  <a class="tile" href="{{ url_for('user.trainings') }}">
+    <span class="tile-ic ic-amber">🎓</span>
+    <span><span class="tile-n">{{ pending_training|length }}</span><div class="tile-l">Training to complete</div></span>
+  </a>
+  <a class="tile" href="{{ url_for('user.swaps') }}">
+    <span class="tile-ic ic-green">🔁</span>
+    <span><span class="tile-n">{{ coverable|length }}</span><div class="tile-l">Swaps you can cover</div></span>
+  </a>
+  <a class="tile" href="{{ url_for('user.profile') }}">
+    <span class="tile-ic ic-violet">🎛️</span>
+    <span><span class="tile-n">{{ qualified_count }}</span><div class="tile-l">Roles you're qualified for</div></span>
+  </a>
 </div>
 
 {% if announcements %}
@@ -22,9 +50,8 @@
 {% if polls %}
 {% for p in polls %}
 <div class="card" style="border-left:4px solid var(--green);">
-  <h3 style="margin-bottom:6px;">📊 {{ p['poll']['question'] }}</h3>
+  <div class="sec-head"><span class="sec-ic ic-green">📊</span><h3>{{ p['poll']['question'] }}</h3></div>
   {% if p['user_option_id'] or not p['open'] %}
-    {# Already responded, or poll closed: show results #}
     {% for o in p['options'] %}
     <div style="margin:8px 0;">
       <div style="display:flex;justify-content:space-between;font-size:14px;">
@@ -37,7 +64,6 @@
     <p class="meta" style="margin-top:8px;">{{ p['total'] }} response{{ 's' if p['total'] != 1 }}
       {% if p['open'] %}· you've responded{% else %}· closed{% endif %}</p>
   {% else %}
-    {# Open and not yet answered: show voting form #}
     <form method="post" action="{{ url_for('user.vote_poll', poll_id=p['poll']['id']) }}">
       {% for o in p['options'] %}
       <label class="poll-choice">
@@ -55,7 +81,7 @@
 
 {% if pending_training %}
 <div class="card" style="border-left:4px solid var(--amber);">
-  <h3>⚠️ Training to complete before you can serve</h3>
+  <div class="sec-head"><span class="sec-ic ic-amber">⚠️</span><h3>Training to complete before you can serve</h3></div>
   {% for t in pending_training %}
   <div class="list-item">
     <div>
@@ -69,14 +95,20 @@
 {% endif %}
 
 <div class="grid grid-2">
-  <div class="card">
-    <h3>📅 Your upcoming assignments</h3>
+  <div class="card card-accent">
+    <div class="sec-head"><span class="sec-ic ic-blue">📅</span><h3>Your upcoming assignments</h3></div>
     {% if upcoming %}
       {% for a in upcoming %}
       <div class="list-item">
-        <div>
-          <strong>{{ a['role_name'] }}</strong> · {{ a['service_title'] }}<br>
-          <span class="meta">{{ a['service_date']|pretty_date }}{% if a['start_time'] %} · {{ a['start_time'] }}{% endif %}</span>
+        <div class="li-lead">
+          <span class="date-chip">
+            <span class="d-mon">{{ a['service_date']|mon }}</span>
+            <span class="d-day">{{ a['service_date']|dayn }}</span>
+          </span>
+          <div>
+            <strong>{{ a['role_name'] }}</strong> · {{ a['service_title'] }}<br>
+            <span class="meta">{{ a['service_date']|pretty_date }}{% if a['start_time'] %} · {{ a['start_time'] }}{% endif %}</span>
+          </div>
         </div>
         <div class="row-actions">
           {% if a['status'] == 'confirmed' %}<span class="badge badge-green">Confirmed</span>
@@ -87,19 +119,19 @@
       </div>
       {% endfor %}
     {% else %}
-      <div class="empty">No upcoming assignments yet.</div>
+      <div class="empty">No upcoming assignments yet. 🎉</div>
     {% endif %}
   </div>
 
-  <div class="card">
-    <h3>🎛️ Your roles &amp; qualification</h3>
+  <div class="card card-accent" style="border-top-color:var(--green);">
+    <div class="sec-head"><span class="sec-ic ic-violet">🎛️</span><h3>Your roles &amp; qualification</h3></div>
     {% if role_status %}
       {% for rs in role_status %}
       <div class="list-item">
         <div><strong>{{ rs['role']['name'] }}</strong></div>
         <div>
           {% if rs['qualified'] %}
-            <span class="badge badge-green">Qualified</span>
+            <span class="badge badge-green">✓ Qualified</span>
           {% else %}
             <span class="badge badge-amber">Training {{ rs['completed'] }}/{{ rs['required'] }}</span>
           {% endif %}
@@ -113,13 +145,19 @@
 </div>
 
 <div class="card">
-  <h3>🔁 Swaps you can cover</h3>
+  <div class="sec-head"><span class="sec-ic ic-green">🔁</span><h3>Swaps you can cover</h3></div>
   {% if coverable %}
     {% for sw in coverable %}
     <div class="list-item">
-      <div>
-        <strong>{{ sw['role_name'] }}</strong> · {{ sw['service_title'] }}<br>
-        <span class="meta">{{ sw['service_date']|pretty_date }} · requested by {{ sw['requester_name'] }}</span>
+      <div class="li-lead">
+        <span class="date-chip">
+          <span class="d-mon">{{ sw['service_date']|mon }}</span>
+          <span class="d-day">{{ sw['service_date']|dayn }}</span>
+        </span>
+        <div>
+          <strong>{{ sw['role_name'] }}</strong> · {{ sw['service_title'] }}<br>
+          <span class="meta">{{ sw['service_date']|pretty_date }} · requested by {{ sw['requester_name'] }}</span>
+        </div>
       </div>
       <form method="post" action="{{ url_for('user.volunteer_swap', swap_id=sw['id']) }}" class="inline-form">
         <button class="btn btn-sm btn-green">Volunteer to cover</button>

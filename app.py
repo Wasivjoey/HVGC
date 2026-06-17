@@ -105,6 +105,22 @@ def create_app():
                 continue
         return value
 
+    @app.template_filter("mon")
+    def mon(value):
+        from datetime import datetime
+        try:
+            return datetime.strptime(value[:10], "%Y-%m-%d").strftime("%b")
+        except (ValueError, TypeError):
+            return ""
+
+    @app.template_filter("dayn")
+    def dayn(value):
+        from datetime import datetime
+        try:
+            return datetime.strptime(value[:10], "%Y-%m-%d").strftime("%-d")
+        except (ValueError, TypeError):
+            return ""
+
     @app.template_filter("pretty_dt")
     def pretty_dt(value):
         if not value:

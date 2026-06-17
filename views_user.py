@@ -88,6 +88,7 @@ def dashboard():
         role_status=role_status,
         announcements=announcements,
         polls=polls,
+        today=today,
     )
 
 
