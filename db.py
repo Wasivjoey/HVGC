@@ -77,12 +77,13 @@ CREATE TABLE IF NOT EXISTS trainings (
 );
 
 CREATE TABLE IF NOT EXISTS user_training (
-    id           INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    training_id  INTEGER NOT NULL REFERENCES trainings(id) ON DELETE CASCADE,
-    status       TEXT NOT NULL DEFAULT 'assigned',  -- assigned | completed
-    assigned_at  TEXT NOT NULL,
-    completed_at TEXT,
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    training_id     INTEGER NOT NULL REFERENCES trainings(id) ON DELETE CASCADE,
+    status          TEXT NOT NULL DEFAULT 'assigned',  -- assigned | completed
+    video_completed INTEGER NOT NULL DEFAULT 0,        -- watched the attached video fully
+    assigned_at     TEXT NOT NULL,
+    completed_at    TEXT,
     UNIQUE(user_id, training_id)
 );
 
@@ -354,6 +355,11 @@ def _migrate(conn):
     cols = _columns(conn, "trainings")
     if "video_url" not in cols:
         conn.execute("ALTER TABLE trainings ADD COLUMN video_url TEXT")
+        conn.commit()
+
+    utcols = _columns(conn, "user_training")
+    if "video_completed" not in utcols:
+        conn.execute("ALTER TABLE user_training ADD COLUMN video_completed INTEGER NOT NULL DEFAULT 0")
         conn.commit()
 
     scols = _columns(conn, "services")

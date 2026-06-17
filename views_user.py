@@ -538,11 +538,42 @@ def training_detail(training_id):
     return render_template("training_detail.html", t=row, video=video)
 
 
+@bp.route("/trainings/<int:training_id>/video-complete", methods=["POST"])
+@login_required
+def video_complete(training_id):
+    """Called by the player when the attached video finishes playing."""
+    user = current_user()
+    conn = get_db()
+    conn.execute(
+        "UPDATE user_training SET video_completed = 1"
+        " WHERE user_id = ? AND training_id = ?",
+        (user["id"], training_id),
+    )
+    conn.commit()
+    conn.close()
+    return ("", 204)
+
+
 @bp.route("/trainings/<int:training_id>/complete", methods=["POST"])
 @login_required
 def complete_training(training_id):
     user = current_user()
     conn = get_db()
+    row = conn.execute(
+        "SELECT ut.video_completed, t.video_url FROM user_training ut"
+        " JOIN trainings t ON t.id = ut.training_id"
+        " WHERE ut.user_id = ? AND ut.training_id = ?",
+        (user["id"], training_id),
+    ).fetchone()
+    # If a playable video is attached, it must be watched to the end first.
+    video = parse_video(row["video_url"]) if row else None
+    if (video and video["kind"] in ("youtube", "vimeo", "file")
+            and row and not row["video_completed"]):
+        conn.close()
+        flash("Please watch the full training video before marking it complete.",
+              "warning")
+        return redirect(url_for("user.training_detail", training_id=training_id))
+
     conn.execute(
         "UPDATE user_training SET status = 'completed', completed_at = ?"
         " WHERE user_id = ? AND training_id = ?",

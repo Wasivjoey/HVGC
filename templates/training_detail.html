@@ -50,19 +50,71 @@
   <div class="content-prose">{{ t['content'] or 'No additional written content for this training.' }}</div>
 </div>
 
+{% set playable = video and video['kind'] in ['youtube', 'vimeo', 'file'] %}
+{% set needs_watch = playable and not t['video_completed'] %}
 {% if t['status'] != 'completed' %}
 <form method="post" action="{{ url_for('user.complete_training', training_id=t['training_id']) }}">
-  <button class="btn btn-green">✓ Mark this training complete</button>
+  <button id="complete-btn" class="btn btn-green" {{ 'disabled' if needs_watch }}>✓ Mark this training complete</button>
+  {% if needs_watch %}
+    <p class="tag" id="watch-hint">▶ Watch the full video above to enable this.</p>
+  {% elif playable %}
+    <p class="tag">✅ Video watched.</p>
+  {% endif %}
 </form>
 {% else %}
 <p class="muted">You've completed this training. Nice work!</p>
 {% endif %}
 
-{% if video and video['kind'] in ['youtube', 'vimeo', 'file'] %}
+{% if playable %}
 <script>
 (function () {
-  // Pause the training video whenever the user leaves this window/tab so it
-  // can't keep playing in the background.
+  var COMPLETE_URL = "{{ url_for('user.video_complete', training_id=t['training_id']) }}";
+  var alreadyWatched = {{ 'true' if t['video_completed'] else 'false' }};
+
+  function enableButton(msg) {
+    var b = document.getElementById('complete-btn');
+    if (b) { b.disabled = false; }
+    var h = document.getElementById('watch-hint');
+    if (h && msg) { h.textContent = msg; }
+  }
+  function markWatched() {
+    if (window.__watched) { return; }
+    window.__watched = true;
+    try { fetch(COMPLETE_URL, {method: 'POST'}); } catch (e) {}
+    enableButton('✅ Video watched — you can mark this training complete now.');
+  }
+  if (alreadyWatched) { enableButton(); }
+
+  // --- Detect when the video has played to the end, per provider ---
+  {% if video['kind'] == 'file' %}
+  var v = document.getElementById('training-video');
+  if (v) { v.addEventListener('ended', markWatched); }
+  {% elif video['kind'] == 'youtube' %}
+  var ytTag = document.createElement('script');
+  ytTag.src = 'https://www.youtube.com/iframe_api';
+  document.head.appendChild(ytTag);
+  window.onYouTubeIframeAPIReady = function () {
+    new YT.Player('training-video', {
+      events: {
+        'onStateChange': function (e) {
+          if (e.data === YT.PlayerState.ENDED) { markWatched(); }
+        }
+      }
+    });
+  };
+  {% elif video['kind'] == 'vimeo' %}
+  var vimeoTag = document.createElement('script');
+  vimeoTag.src = 'https://player.vimeo.com/api/player.js';
+  vimeoTag.onload = function () {
+    try {
+      var p = new Vimeo.Player(document.getElementById('training-video'));
+      p.on('ended', markWatched);
+    } catch (e) {}
+  };
+  document.head.appendChild(vimeoTag);
+  {% endif %}
+
+  // --- Pause the video when the user leaves the window/tab ---
   function pauseAll() {
     document.querySelectorAll('video').forEach(function (v) {
       try { v.pause(); } catch (e) {}
@@ -71,8 +123,7 @@
       var provider = f.getAttribute('data-provider');
       try {
         if (provider === 'youtube') {
-          f.contentWindow.postMessage(
-            '{"event":"command","func":"pauseVideo","args":""}', '*');
+          f.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*');
         } else if (provider === 'vimeo') {
           f.contentWindow.postMessage('{"method":"pause"}', '*');
         }
@@ -81,10 +132,7 @@
     var hint = document.getElementById('pause-hint');
     if (hint) { hint.textContent = '⏸ Paused — you left the window. Click the video to resume.'; }
   }
-
-  document.addEventListener('visibilitychange', function () {
-    if (document.hidden) { pauseAll(); }
-  });
+  document.addEventListener('visibilitychange', function () { if (document.hidden) { pauseAll(); } });
   window.addEventListener('blur', pauseAll);
   window.addEventListener('pagehide', pauseAll);
 })();
