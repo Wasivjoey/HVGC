@@ -8,7 +8,7 @@
     {% if current_user['avatar'] %}
     <img class="hero-avatar" src="{{ url_for('user.user_avatar', user_id=current_user['id']) }}" alt="">
     {% else %}
-    <span class="hero-avatar">{{ current_user['name'][0]|upper }}</span>
+    <span class="hero-avatar hero-avatar-letter">{{ current_user['name'][0]|upper }}</span>
     {% endif %}
     <div>
       <h1>Hi, {{ current_user['name'].split()[0] }} 👋</h1>

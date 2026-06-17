@@ -59,7 +59,7 @@ nav a.active { background: var(--brand); color: #fff; }
   width: 36px; height: 36px; border-radius: 50%; background: var(--brand);
   color: #fff; display: grid; place-items: center; font-weight: 700;
 }
-.avatar-img { object-fit: cover; padding: 0; }
+.avatar-img { display: block; object-fit: cover; padding: 0; background: none; }
 .who strong { color: #fff; display: block; font-size: 13px; }
 .who small { color: #8a93b2; }
 .logout {
@@ -225,9 +225,10 @@ details.inline-edit[open] { margin-top: 10px; }
   background: rgba(255,255,255,.10); border-radius: 50%;
 }
 .hero-left { display: flex; align-items: center; gap: 16px; z-index: 1; }
-.hero-avatar { width: 58px; height: 58px; border-radius: 50%; object-fit: cover;
-  border: 2px solid rgba(255,255,255,.55); background: rgba(255,255,255,.2);
-  display: grid; place-items: center; font-size: 24px; font-weight: 700; color: #fff; }
+.hero-avatar { display: block; width: 58px; height: 58px; border-radius: 50%;
+  object-fit: cover; border: 2px solid rgba(255,255,255,.55); flex-shrink: 0; }
+.hero-avatar-letter { background: rgba(255,255,255,.2); display: grid;
+  place-items: center; font-size: 24px; font-weight: 700; color: #fff; }
 .hero h1 { margin: 0; font-size: 25px; color: #fff; }
 .hero .hero-sub { margin: 4px 0 0; color: rgba(255,255,255,.85); font-size: 14px; }
 .hero .btn { background: rgba(255,255,255,.18); border: 1px solid rgba(255,255,255,.40);
@@ -266,9 +267,9 @@ details.inline-edit[open] { margin-top: 10px; }
 .poll-choice input { width: auto; }
 /* avatars */
 .avatar-edit { display: flex; gap: 16px; align-items: flex-start; margin-bottom: 6px; }
-.avatar-lg { width: 84px; height: 84px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+.avatar-lg { display: block; width: 84px; height: 84px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
 .avatar-lg-letter { display: grid; place-items: center; background: var(--brand); color: #fff; font-size: 32px; font-weight: 700; }
-.avatar-sm { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+.avatar-sm { display: block; width: 30px; height: 30px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
 .avatar-sm-letter { display: grid; place-items: center; background: var(--brand); color: #fff; font-size: 13px; font-weight: 700; }
 .name-cell { display: flex; align-items: center; gap: 10px; }
 .video-wrap { position: relative; width: 100%; aspect-ratio: 16 / 9; background: #000; border-radius: 12px; overflow: hidden; }
