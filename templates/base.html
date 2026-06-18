@@ -52,9 +52,13 @@
       {% endif %}
 
       <p class="nav-label">Account</p>
+      {% if not hide_vol %}
       <a href="{{ url_for('user.notifications') }}" class="{{ 'active' if request.endpoint == 'user.notifications' }}">🔔 Notifications{% if unread_notifications %} <span class="nav-badge">{{ unread_notifications }}</span>{% endif %}</a>
+      {% endif %}
       <a href="{{ url_for('user.profile') }}" class="{{ 'active' if request.endpoint == 'user.profile' }}">👤 My Profile</a>
+      {% if not hide_vol %}
       <a href="{{ url_for('user.manual') }}" class="{{ 'active' if request.endpoint == 'user.manual' }}">📖 User Manual</a>
+      {% endif %}
     </nav>
 
     <div class="sidebar-foot">
