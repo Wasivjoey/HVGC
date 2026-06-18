@@ -28,15 +28,15 @@
     </div>
 
     <nav>
+      {% set hide_vol = current_user['is_admin'] and current_user['hide_volunteer_menu'] %}
+      {% if not hide_vol %}
       <p class="nav-label">Volunteer</p>
       <a href="{{ url_for('user.dashboard') }}" class="{{ 'active' if request.endpoint == 'user.dashboard' }}">📊 Dashboard</a>
-      <a href="{{ url_for('user.notifications') }}" class="{{ 'active' if request.endpoint == 'user.notifications' }}">🔔 Notifications{% if unread_notifications %} <span class="nav-badge">{{ unread_notifications }}</span>{% endif %}</a>
       <a href="{{ url_for('user.availability') }}" class="{{ 'active' if request.endpoint == 'user.availability' }}">📅 My Availability</a>
       <a href="{{ url_for('user.services') }}" class="{{ 'active' if request.endpoint in ['user.services','user.service_detail'] }}">⛪ Services</a>
       <a href="{{ url_for('user.swaps') }}" class="{{ 'active' if request.endpoint == 'user.swaps' }}">🔁 Role Swaps</a>
       <a href="{{ url_for('user.trainings') }}" class="{{ 'active' if request.endpoint in ['user.trainings','user.training_detail'] }}">🎓 Training</a>
-      <a href="{{ url_for('user.profile') }}" class="{{ 'active' if request.endpoint == 'user.profile' }}">👤 My Profile</a>
-      <a href="{{ url_for('user.manual') }}" class="{{ 'active' if request.endpoint == 'user.manual' }}">📖 User Manual</a>
+      {% endif %}
 
       {% if current_user['is_admin'] %}
       <p class="nav-label">Administration</p>
@@ -50,6 +50,11 @@
       <a href="{{ url_for('admin.announcements') }}" class="{{ 'active' if request.endpoint == 'admin.announcements' }}">📣 Announcements</a>
       <a href="{{ url_for('admin.polls') }}" class="{{ 'active' if request.endpoint == 'admin.polls' }}">📊 Polls</a>
       {% endif %}
+
+      <p class="nav-label">Account</p>
+      <a href="{{ url_for('user.notifications') }}" class="{{ 'active' if request.endpoint == 'user.notifications' }}">🔔 Notifications{% if unread_notifications %} <span class="nav-badge">{{ unread_notifications }}</span>{% endif %}</a>
+      <a href="{{ url_for('user.profile') }}" class="{{ 'active' if request.endpoint == 'user.profile' }}">👤 My Profile</a>
+      <a href="{{ url_for('user.manual') }}" class="{{ 'active' if request.endpoint == 'user.manual' }}">📖 User Manual</a>
     </nav>
 
     <div class="sidebar-foot">

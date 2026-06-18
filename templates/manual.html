@@ -37,6 +37,7 @@
       </ul>
     </div>
     <div>
+      {% if current_user['is_admin'] %}
       <strong>For administrators</strong>
       <ul class="manual-toc">
         <li><a href="#admin-home">12. Admin home</a></li>
@@ -48,6 +49,7 @@
         <li><a href="#grid">18. Availability grid</a></li>
         <li><a href="#approvals">19. Swap approvals</a></li>
       </ul>
+      {% endif %}
       <strong>Reference</strong>
       <ul class="manual-toc">
         <li><a href="#qualification">20. The qualification rule</a></li>
@@ -212,6 +214,7 @@
 </div>
 
 <!-- ============================================ ADMIN -->
+{% if current_user['is_admin'] %}
 <div class="card manual" id="admin-home" style="border-top:3px solid var(--brand);">
   <h2>12. Admin home <span class="badge badge-blue">Admins only</span></h2>
   <p>Sections 12–19 are visible only to administrators. <strong>Admin Home</strong>
@@ -299,6 +302,7 @@
   — click <strong>Approve</strong> to reassign the slot to them, or <strong>Reject</strong>
   to decline. Open requests with no volunteer yet can also be rejected.</p>
 </div>
+{% endif %}
 
 <!-- ============================================ REFERENCE -->
 <div class="card manual" id="qualification" style="border-top:3px solid var(--green);">

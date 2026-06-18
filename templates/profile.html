@@ -41,6 +41,12 @@
         <label for="email_opt_in">Email me about important updates (approvals, schedule changes,
           password resets). You'll still get in-app notifications either way.</label>
       </div>
+      {% if current_user['is_admin'] %}
+      <div class="check" style="margin-top:12px;">
+        <input type="checkbox" id="hide_volunteer_menu" name="hide_volunteer_menu" {{ 'checked' if current_user['hide_volunteer_menu'] }}>
+        <label for="hide_volunteer_menu">Hide the volunteer menu — show only admin tools in my sidebar.</label>
+      </div>
+      {% endif %}
       <button class="btn" style="margin-top:16px;">Save changes</button>
     </form>
     <div class="divider"></div>

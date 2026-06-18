@@ -19,6 +19,7 @@ from reportlab.platypus import (
 HERE = os.path.dirname(os.path.abspath(__file__))
 LOGO = os.path.join(HERE, "static", "logo.png")
 OUT = os.path.join(HERE, "MANUAL.pdf")
+OUT_VOLUNTEER = os.path.join(HERE, "MANUAL-volunteer.pdf")
 
 GOLD = colors.HexColor("#E8B12E")
 BRAND = colors.HexColor("#4453d8")
@@ -76,9 +77,9 @@ def section_bar(title):
     return t
 
 
-def build():
+def build(out_path=OUT, include_admin=True):
     doc = SimpleDocTemplate(
-        OUT, pagesize=LETTER,
+        out_path, pagesize=LETTER,
         leftMargin=0.85 * inch, rightMargin=0.85 * inch,
         topMargin=0.7 * inch, bottomMargin=0.7 * inch,
         title="HVGC LINEUP — User Manual", author="HVGC LINEUP",
@@ -116,13 +117,14 @@ def build():
             "6. Services & the roster", "7. Confirming / declining",
             "8. Role swaps", "9. Service notes", "10. Training & videos",
             "11. Your profile"]),
-        ("For administrators", [
+        ("Reference", ["20. The qualification rule", "21. Quick FAQ"]),
+    ]
+    if include_admin:
+        toc.insert(2, ("For administrators", [
             "12. Admin home", "13. Managing people", "14. Roles",
             "15. Building training", "16. Services & documents",
             "17. The scheduling board", "18. Availability grid",
-            "19. Swap approvals"]),
-        ("Reference", ["20. The qualification rule", "21. Quick FAQ"]),
-    ]
+            "19. Swap approvals"]))
     for group, items in toc:
         e.append(Paragraph(f"<b>{group}</b>", ParagraphStyle(
             "tg", parent=BODY, fontSize=10.5, textColor=BRAND, spaceBefore=8, spaceAfter=2)))
@@ -242,67 +244,68 @@ def build():
                "their qualification status. Email and account type are managed by an administrator."))
 
     e.append(Spacer(1, 6))
-    e.append(section_bar("FOR ADMINISTRATORS (admins only)"))
-    H("12. Admin home")
-    e.append(b("<b>Admin Home</b> gives an overview: counts of people, roles, services, "
-               "trainings, open swaps, and training in progress, plus next services and swaps "
-               "needing attention."))
+    if include_admin:
+        e.append(section_bar("FOR ADMINISTRATORS (admins only)"))
+        H("12. Admin home")
+        e.append(b("<b>Admin Home</b> gives an overview: counts of people, roles, services, "
+                   "trainings, open swaps, and training in progress, plus next services and swaps "
+                   "needing attention."))
 
-    H("13. Managing people")
-    e.append(b("New sign-ups appear on <b>Admin Home</b> and on <b>People</b> with a "
-               "<b>Pending</b> badge — click <b>Approve</b> to let them sign in. Open "
-               "<b>People</b>, then <b>Manage</b> on anyone to:"))
-    e.append(ul([
-        "<b>Approve / revoke approval</b>, and <b>mark email verified</b> manually (or copy "
-        "the verification link to send them).",
-        "<b>Assign / remove roles</b> (assigning a role auto-queues its required training).",
-        "<b>Assign, complete, reset, or remove training.</b>",
-        "<b>Make / revoke admin</b> and <b>activate / deactivate</b> the account. (You can't "
-        "change your own admin/approval status.)",
-    ]))
+        H("13. Managing people")
+        e.append(b("New sign-ups appear on <b>Admin Home</b> and on <b>People</b> with a "
+                   "<b>Pending</b> badge — click <b>Approve</b> to let them sign in. Open "
+                   "<b>People</b>, then <b>Manage</b> on anyone to:"))
+        e.append(ul([
+            "<b>Approve / revoke approval</b>, and <b>mark email verified</b> manually (or copy "
+            "the verification link to send them).",
+            "<b>Assign / remove roles</b> (assigning a role auto-queues its required training).",
+            "<b>Assign, complete, reset, or remove training.</b>",
+            "<b>Make / revoke admin</b> and <b>activate / deactivate</b> the account. (You can't "
+            "change your own admin/approval status.)",
+        ]))
 
-    H("14. Roles")
-    e.append(b("Open <b>Roles</b> to create serving positions (Audio Engineer, Lighting, "
-               "Camera, …). Edit a role's name/description or delete it. Each shows how many "
-               "people are assigned and how many are fully qualified."))
+        H("14. Roles")
+        e.append(b("Open <b>Roles</b> to create serving positions (Audio Engineer, Lighting, "
+                   "Camera, …). Edit a role's name/description or delete it. Each shows how many "
+                   "people are assigned and how many are fully qualified."))
 
-    H("15. Building training")
-    e.append(b("Open <b>Trainings</b> to create modules. For each set:"))
-    e.append(ul([
-        "<b>Title</b> and short description.",
-        "<b>Video link</b> — a YouTube, Vimeo, or direct .mp4 URL; it embeds for the volunteer "
-        "and auto-pauses when they leave the window.",
-        "<b>Linked role</b>.",
-        "<b>Content / instructions</b>.",
-        "<b>Required to serve</b> — tick if it must be completed before serving in that role.",
-    ]))
-    e.append(b("Edit or delete trainings; each shows completion counts."))
+        H("15. Building training")
+        e.append(b("Open <b>Trainings</b> to create modules. For each set:"))
+        e.append(ul([
+            "<b>Title</b> and short description.",
+            "<b>Video link</b> — a YouTube, Vimeo, or direct .mp4 URL; it embeds for the volunteer "
+            "and auto-pauses when they leave the window.",
+            "<b>Linked role</b>.",
+            "<b>Content / instructions</b>.",
+            "<b>Required to serve</b> — tick if it must be completed before serving in that role.",
+        ]))
+        e.append(b("Edit or delete trainings; each shows completion counts."))
 
-    H("16. Services &amp; documents")
-    e.append(b("Open <b>Schedule</b>. <b>+ New service</b> creates a service with <b>title, "
-               "date, start time, location, notes</b>, and an optional <b>programme flow "
-               "document</b> (PDF, Word, PowerPoint, Excel, images). Later you can edit any of "
-               "these — including the time and location — and attach, replace, or remove the "
-               "document from the service's page."))
+        H("16. Services &amp; documents")
+        e.append(b("Open <b>Schedule</b>. <b>+ New service</b> creates a service with <b>title, "
+                   "date, start time, location, notes</b>, and an optional <b>programme flow "
+                   "document</b> (PDF, Word, PowerPoint, Excel, images). Later you can edit any of "
+                   "these — including the time and location — and attach, replace, or remove the "
+                   "document from the service's page."))
 
-    H("17. The scheduling board")
-    e.append(b("Click <b>Schedule</b> on a service to build its team. For each role, every "
-               "candidate shows an availability dot for that date (green = available, red = "
-               "unavailable, grey = not marked) and a badge: <b>Qualified</b> or <b>Not "
-               "trained</b>."))
-    e.append(b("Click <b>Assign</b> for a qualified person. Untrained people are blocked, but "
-               "<b>Override</b> assigns them anyway. The <b>current roster</b> at the top lets "
-               "you <b>Remove</b> anyone."))
+        H("17. The scheduling board")
+        e.append(b("Click <b>Schedule</b> on a service to build its team. For each role, every "
+                   "candidate shows an availability dot for that date (green = available, red = "
+                   "unavailable, grey = not marked) and a badge: <b>Qualified</b> or <b>Not "
+                   "trained</b>."))
+        e.append(b("Click <b>Assign</b> for a qualified person. Untrained people are blocked, but "
+                   "<b>Override</b> assigns them anyway. The <b>current roster</b> at the top lets "
+                   "you <b>Remove</b> anyone."))
 
-    H("18. Availability grid")
-    e.append(b("<b>Availability Grid</b> is a matrix of every volunteer against each upcoming "
-               "service date, using the same green / red / grey dots — the fastest way to see "
-               "who's free."))
+        H("18. Availability grid")
+        e.append(b("<b>Availability Grid</b> is a matrix of every volunteer against each upcoming "
+                   "service date, using the same green / red / grey dots — the fastest way to see "
+                   "who's free."))
 
-    H("19. Swap approvals")
-    e.append(b("<b>Swap Approvals</b> lists all swap requests. When someone has volunteered, the "
-               "request shows <b>Ready to approve</b> — <b>Approve</b> reassigns the slot to "
-               "them, or <b>Reject</b> declines it."))
+        H("19. Swap approvals")
+        e.append(b("<b>Swap Approvals</b> lists all swap requests. When someone has volunteered, the "
+                   "request shows <b>Ready to approve</b> — <b>Approve</b> reassigns the slot to "
+                   "them, or <b>Reject</b> declines it."))
 
     e.append(Spacer(1, 6))
     e.append(section_bar("REFERENCE"))
@@ -349,8 +352,9 @@ def build():
             footer(canvas, doc_)
 
     doc.build(e, onFirstPage=cover_bg, onLaterPages=cover_bg)
-    print("Wrote", OUT)
+    print("Wrote", out_path)
 
 
 if __name__ == "__main__":
-    build()
+    build(OUT, include_admin=True)              # full manual (admins)
+    build(OUT_VOLUNTEER, include_admin=False)   # volunteer-only manual

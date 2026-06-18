@@ -601,20 +601,25 @@ def user_avatar(user_id):
 @bp.route("/manual")
 @login_required
 def manual():
-    pdf_exists = os.path.exists(
-        os.path.join(current_app.root_path, "MANUAL.pdf")
-    )
+    user = current_user()
+    variant = "MANUAL.pdf" if user["is_admin"] else "MANUAL-volunteer.pdf"
+    pdf_exists = (os.path.exists(os.path.join(current_app.root_path, variant))
+                  or os.path.exists(os.path.join(current_app.root_path, "MANUAL.pdf")))
     return render_template("manual.html", pdf_exists=pdf_exists)
 
 
 @bp.route("/manual/pdf")
 @login_required
 def manual_pdf():
-    pdf_path = os.path.join(current_app.root_path, "MANUAL.pdf")
-    if not os.path.exists(pdf_path):
+    user = current_user()
+    # Volunteers get a manual without the admin sections; admins get the full one.
+    filename = "MANUAL.pdf" if user["is_admin"] else "MANUAL-volunteer.pdf"
+    if not os.path.exists(os.path.join(current_app.root_path, filename)):
+        filename = "MANUAL.pdf"  # fall back to the full manual if the variant is missing
+    if not os.path.exists(os.path.join(current_app.root_path, filename)):
         abort(404)
     return send_from_directory(
-        current_app.root_path, "MANUAL.pdf",
+        current_app.root_path, filename,
         as_attachment=True, download_name="HVGC-LINEUP-Manual.pdf",
     )
 
@@ -644,10 +649,13 @@ def profile():
             return redirect(url_for("user.profile"))
 
         email_opt_in = 1 if request.form.get("email_opt_in") == "on" else 0
+        # Only admins may hide the volunteer menu.
+        hide_vol = 1 if (user["is_admin"] and request.form.get("hide_volunteer_menu") == "on") else 0
         if name:
             conn.execute(
-                "UPDATE users SET name = ?, phone = ?, email = ?, email_opt_in = ? WHERE id = ?",
-                (name, phone, email, email_opt_in, user["id"]),
+                "UPDATE users SET name = ?, phone = ?, email = ?, email_opt_in = ?,"
+                " hide_volunteer_menu = ? WHERE id = ?",
+                (name, phone, email, email_opt_in, hide_vol, user["id"]),
             )
 
         # Remove existing avatar if requested.
