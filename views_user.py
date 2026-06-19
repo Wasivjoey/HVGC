@@ -125,6 +125,22 @@ def vote_poll(poll_id):
     return redirect(url_for("user.dashboard"))
 
 
+@bp.route("/account/toggle-volunteer-menu", methods=["POST"])
+@login_required
+def toggle_volunteer_menu():
+    user = current_user()
+    if user["is_admin"]:
+        conn = get_db()
+        conn.execute(
+            "UPDATE users SET hide_volunteer_menu = 1 - hide_volunteer_menu WHERE id = ?",
+            (user["id"],),
+        )
+        conn.commit()
+        conn.close()
+    # Return where they were; if that page is now hidden, the admin dashboard.
+    return redirect(request.referrer or url_for("admin.dashboard"))
+
+
 @bp.route("/notifications")
 @login_required
 def notifications():

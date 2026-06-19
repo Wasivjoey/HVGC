@@ -54,6 +54,15 @@ nav a:hover { background: #1b2236; color: #fff; text-decoration: none; }
 nav a.active { background: var(--brand); color: #fff; }
 .nav-badge { display: inline-block; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--red); color: #fff; font-size: 11px; font-weight: 700; text-align: center; line-height: 18px; vertical-align: middle; }
 .sidebar-foot { padding: 14px; border-top: 1px solid #20283f; }
+.vol-toggle { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+.switch-label { color: #c7cde0; font-size: 12.5px; }
+.switch { position: relative; display: inline-block; width: 38px; height: 22px; flex-shrink: 0; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.switch .slider { position: absolute; inset: 0; background: #2a3350; border-radius: 999px; transition: background .2s; cursor: pointer; }
+.switch .slider::before { content: ""; position: absolute; height: 16px; width: 16px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: transform .2s; }
+.switch input:checked + .slider { background: var(--brand); }
+.switch input:checked + .slider::before { transform: translateX(16px); }
+.switch input:focus-visible + .slider { outline: 2px solid var(--brand); outline-offset: 1px; }
 .who { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
 .avatar {
   width: 36px; height: 36px; border-radius: 50%; background: var(--brand);
