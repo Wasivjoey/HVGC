@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}My Schedule · HVGC LINEUP{% endblock %}
+{% block body %}
+<div class="page-head">
+  <div>
+    <h1>My Schedule</h1>
+    <p>Everything you're scheduled to serve on the AV team.</p>
+  </div>
+  {% if upcoming %}
+  <a href="{{ url_for('user.schedule_calendar') }}" class="btn">📅 Add all to calendar</a>
+  {% endif %}
+</div>
+
+<div class="dash-stats">
+  <div class="tile"><span class="tile-ic ic-blue">📅</span>
+    <span><span class="tile-n">{{ counts['upcoming'] }}</span><div class="tile-l">Upcoming</div></span></div>
+  <div class="tile"><span class="tile-ic ic-green">✓</span>
+    <span><span class="tile-n">{{ counts['confirmed'] }}</span><div class="tile-l">Confirmed</div></span></div>
+  <div class="tile"><span class="tile-ic ic-amber">⏳</span>
+    <span><span class="tile-n">{{ counts['unconfirmed'] }}</span><div class="tile-l">Awaiting your confirmation</div></span></div>
+  <div class="tile"><span class="tile-ic ic-violet">🎖️</span>
+    <span><span class="tile-n">{{ counts['served'] }}</span><div class="tile-l">Past services</div></span></div>
+</div>
+
+<div class="card card-accent">
+  <div class="sec-head"><span class="sec-ic ic-blue">📅</span><h3>Upcoming</h3></div>
+  {% if upcoming %}
+    {% for a in upcoming %}
+    <div class="list-item">
+      <div class="li-lead">
+        <span class="date-chip">
+          <span class="d-mon">{{ a['service_date']|mon }}</span>
+          <span class="d-day">{{ a['service_date']|dayn }}</span>
+        </span>
+        <div>
+          <strong>{{ a['role_name'] }}</strong> · {{ a['service_title'] }}<br>
+          <span class="meta">{{ a['service_date']|pretty_date }}{% if a['start_time'] %} · {{ a['start_time'] }}{% endif %}{% if a['location'] %} · {{ a['location'] }}{% endif %}</span>
+        </div>
+      </div>
+      <div class="row-actions">
+        {% if a['status'] == 'confirmed' %}<span class="badge badge-green">Confirmed</span>
+        {% elif a['status'] == 'declined' %}<span class="badge badge-red">Declined</span>
+        {% else %}
+          <form method="post" action="{{ url_for('user.respond_assignment', assignment_id=a['id']) }}" class="inline-form">
+            <input type="hidden" name="decision" value="confirmed">
+            <button class="btn btn-sm btn-green">Confirm</button>
+          </form>
+        {% endif %}
+        <a href="{{ url_for('user.service_calendar', service_id=a['service_id']) }}" class="btn btn-sm btn-ghost" title="Add to calendar">📅</a>
+        <a href="{{ url_for('user.service_detail', service_id=a['service_id']) }}" class="btn btn-sm btn-ghost">View</a>
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="empty">You have no upcoming assignments. 🎉</div>
+  {% endif %}
+</div>
+
+{% if past %}
+<div class="card">
+  <div class="sec-head"><span class="sec-ic ic-violet">🎖️</span><h3>Recently served</h3></div>
+  {% for a in past[:12] %}
+  <div class="list-item">
+    <div class="li-lead">
+      <span class="date-chip" style="background:#9aa3b5;">
+        <span class="d-mon">{{ a['service_date']|mon }}</span>
+        <span class="d-day">{{ a['service_date']|dayn }}</span>
+      </span>
+      <div>
+        <strong>{{ a['role_name'] }}</strong> · {{ a['service_title'] }}<br>
+        <span class="meta">{{ a['service_date']|pretty_date }}</span>
+      </div>
+    </div>
+    {% if a['status'] == 'confirmed' %}<span class="badge badge-green">Confirmed</span>
+    {% elif a['status'] == 'declined' %}<span class="badge badge-red">Declined</span>
+    {% else %}<span class="badge badge-gray">Served</span>{% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

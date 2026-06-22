@@ -15,7 +15,7 @@ from db import get_db, now_iso
 from helpers import (
     login_required, current_user, role_training_status, is_qualified, parse_video,
     save_avatar, delete_avatar, avatars_dir, get_announcements, get_polls, poll_is_open,
-    build_ics,
+    build_ics, build_ics_feed,
 )
 
 bp = Blueprint("user", __name__)
@@ -376,6 +376,69 @@ def delete_note(service_id, note_id):
     conn.commit()
     conn.close()
     return redirect(url_for("user.service_detail", service_id=service_id))
+
+
+@bp.route("/my-schedule")
+@login_required
+def my_schedule():
+    """An overview of everything the signed-in volunteer is scheduled for."""
+    user = current_user()
+    conn = get_db()
+    today = date.today().isoformat()
+    rows = conn.execute(
+        "SELECT a.id, a.status, a.service_id, r.name AS role_name,"
+        " s.title AS service_title, s.service_date, s.start_time, s.location"
+        " FROM assignments a"
+        " JOIN services s ON s.id = a.service_id"
+        " JOIN roles r ON r.id = a.role_id"
+        " WHERE a.user_id = ? ORDER BY s.service_date, s.start_time",
+        (user["id"],),
+    ).fetchall()
+    conn.close()
+    upcoming = [a for a in rows if a["service_date"] >= today]
+    past = [a for a in rows if a["service_date"] < today]
+    past.reverse()  # most recent first
+    counts = {
+        "upcoming": len(upcoming),
+        "confirmed": sum(1 for a in upcoming if a["status"] == "confirmed"),
+        "unconfirmed": sum(1 for a in upcoming if a["status"] == "scheduled"),
+        "served": len(past),
+    }
+    return render_template("my_schedule.html", upcoming=upcoming, past=past, counts=counts)
+
+
+@bp.route("/my-schedule/calendar.ics")
+@login_required
+def schedule_calendar():
+    """Download the whole upcoming schedule as one calendar file."""
+    user = current_user()
+    conn = get_db()
+    today = date.today().isoformat()
+    rows = conn.execute(
+        "SELECT a.id, r.name AS role_name, s.title, s.service_date, s.start_time,"
+        " s.location, s.notes"
+        " FROM assignments a"
+        " JOIN services s ON s.id = a.service_id"
+        " JOIN roles r ON r.id = a.role_id"
+        " WHERE a.user_id = ? AND s.service_date >= ?"
+        " ORDER BY s.service_date, s.start_time",
+        (user["id"], today),
+    ).fetchall()
+    conn.close()
+    events = [{
+        "uid": f"assignment-{a['id']}@hvgc-lineup",
+        "summary": f"AV Team: {a['role_name']} — {a['title']}",
+        "service_date": a["service_date"],
+        "start_time": a["start_time"],
+        "location": a["location"],
+        "description": (f"You're serving as {a['role_name']} for {a['title']}."
+                        + (("\n\n" + a["notes"]) if a["notes"] else "")),
+    } for a in rows]
+    ics = build_ics_feed(events)
+    return Response(
+        ics, mimetype="text/calendar",
+        headers={"Content-Disposition": 'attachment; filename="my-hvgc-schedule.ics"'},
+    )
 
 
 @bp.route("/services/<int:service_id>/calendar.ics")

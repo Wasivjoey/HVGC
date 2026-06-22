@@ -147,16 +147,12 @@ def _ics_escape(s):
             .replace(",", "\\,").replace("\n", "\\n").replace("\r", ""))
 
 
-def build_ics(uid, summary, service_date, start_time, location, description,
-              duration_min=120):
-    """Build an iCalendar (.ics) event with reminders so the volunteer's calendar
-    alerts them before the service. Uses floating local time so the event shows
-    at the church's wall-clock time in any calendar app."""
+def _vevent_lines(uid, summary, service_date, start_time, location, description,
+                  duration_min=120):
+    """The VEVENT block for one service, with reminders. Floating local time."""
     from datetime import datetime, timedelta
     stamp = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
-    lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//HVGC LINEUP//EN",
-             "CALSCALE:GREGORIAN", "METHOD:PUBLISH", "BEGIN:VEVENT",
-             "UID:" + uid, "DTSTAMP:" + stamp]
+    lines = ["BEGIN:VEVENT", "UID:" + uid, "DTSTAMP:" + stamp]
     if start_time:
         try:
             dt = datetime.strptime(f"{service_date} {start_time}", "%Y-%m-%d %H:%M")
@@ -174,13 +170,37 @@ def build_ics(uid, summary, service_date, start_time, location, description,
         lines.append("LOCATION:" + _ics_escape(location))
     if description:
         lines.append("DESCRIPTION:" + _ics_escape(description))
-    # Alert the day before and an hour before.
     for trigger, note in (("-P1D", "Tomorrow you're serving on the AV team"),
                           ("-PT1H", "You're serving on the AV team in 1 hour")):
         lines += ["BEGIN:VALARM", "TRIGGER:" + trigger, "ACTION:DISPLAY",
                   "DESCRIPTION:" + _ics_escape(note), "END:VALARM"]
-    lines += ["END:VEVENT", "END:VCALENDAR"]
-    return "\r\n".join(lines) + "\r\n"
+    lines.append("END:VEVENT")
+    return lines
+
+
+def _wrap_calendar(vevent_lines):
+    head = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//HVGC LINEUP//EN",
+            "CALSCALE:GREGORIAN", "METHOD:PUBLISH"]
+    return "\r\n".join(head + vevent_lines + ["END:VCALENDAR"]) + "\r\n"
+
+
+def build_ics(uid, summary, service_date, start_time, location, description,
+              duration_min=120):
+    """A calendar file containing a single service event with reminders."""
+    return _wrap_calendar(_vevent_lines(uid, summary, service_date, start_time,
+                                        location, description, duration_min))
+
+
+def build_ics_feed(events):
+    """A calendar file containing many service events (the user's whole schedule).
+
+    events: list of dicts with uid, summary, service_date, start_time, location,
+    description."""
+    lines = []
+    for e in events:
+        lines += _vevent_lines(e["uid"], e["summary"], e["service_date"],
+                               e.get("start_time"), e.get("location"), e.get("description"))
+    return _wrap_calendar(lines)
 
 
 def parse_video(url):
