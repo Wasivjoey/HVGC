@@ -110,9 +110,10 @@ def register():
             return redirect(url_for("admin.dashboard"))
 
         sent, link = _send_verification(new_id, name, email, token)
-        # Without a mail server we surface the link so the account can still be
-        # verified (and an admin can also see it on the People page).
-        dev_link = None if (sent or current_app.config.get("EMAIL_ENABLED")) else link
+        # If the email wasn't actually delivered (no mail server, or the send
+        # failed), surface the link on screen so the account can still be
+        # verified. An admin can also copy it from the People page.
+        dev_link = None if sent else link
         return render_template("auth/registered.html", email=email, sent=sent,
                                dev_link=dev_link)
 

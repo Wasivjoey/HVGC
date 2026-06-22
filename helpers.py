@@ -33,16 +33,26 @@ def send_email(to_address, subject, body):
     msg["From"] = cfg["SMTP_FROM"]
     msg["To"] = to_address
     msg.set_content(body)
+    host, port = cfg["SMTP_HOST"], cfg["SMTP_PORT"]
     try:
-        with smtplib.SMTP(cfg["SMTP_HOST"], cfg["SMTP_PORT"], timeout=15) as s:
-            if cfg.get("SMTP_TLS"):
+        # Port 465 = implicit SSL; 587/25 = plain + STARTTLS.
+        if port == 465:
+            server = smtplib.SMTP_SSL(host, port, timeout=20)
+        else:
+            server = smtplib.SMTP(host, port, timeout=20)
+        with server as s:
+            s.ehlo()
+            if port != 465 and cfg.get("SMTP_TLS"):
                 s.starttls()
+                s.ehlo()
             if cfg.get("SMTP_USER"):
                 s.login(cfg["SMTP_USER"], cfg["SMTP_PASSWORD"])
             s.send_message(msg)
+        current_app.logger.info("Email sent to %s: %s", to_address, subject)
         return True
     except Exception as e:  # network/auth problems shouldn't crash registration
-        current_app.logger.error("Email send failed: %s", e)
+        current_app.logger.error("Email send FAILED to %s (%s:%s): %s",
+                                 to_address, host, port, e)
         return False
 
 ALLOWED_DOC_EXTENSIONS = {

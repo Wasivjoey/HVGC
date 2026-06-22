@@ -25,6 +25,12 @@ def create_app():
     app.config["SESSION_COOKIE_HTTPONLY"] = True
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 
+    # Behind Render's TLS proxy, honour X-Forwarded-* so verification links built
+    # with url_for(_external=True) use the real https host (not internal http).
+    from werkzeug.middleware.proxy_fix import ProxyFix
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+    app.config["PREFERRED_URL_SCHEME"] = "https"
+
     # Where uploaded programme-flow documents are stored. Use a mounted volume
     # on a cloud host so files survive redeploys (defaults next to the database).
     upload_path = os.environ.get(
