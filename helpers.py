@@ -138,6 +138,47 @@ def delete_avatar(stored_name):
         pass
 
 
+def _ics_escape(s):
+    return ((s or "").replace("\\", "\\\\").replace(";", "\\;")
+            .replace(",", "\\,").replace("\n", "\\n").replace("\r", ""))
+
+
+def build_ics(uid, summary, service_date, start_time, location, description,
+              duration_min=120):
+    """Build an iCalendar (.ics) event with reminders so the volunteer's calendar
+    alerts them before the service. Uses floating local time so the event shows
+    at the church's wall-clock time in any calendar app."""
+    from datetime import datetime, timedelta
+    stamp = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+    lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//HVGC LINEUP//EN",
+             "CALSCALE:GREGORIAN", "METHOD:PUBLISH", "BEGIN:VEVENT",
+             "UID:" + uid, "DTSTAMP:" + stamp]
+    if start_time:
+        try:
+            dt = datetime.strptime(f"{service_date} {start_time}", "%Y-%m-%d %H:%M")
+        except ValueError:
+            dt = datetime.strptime(service_date, "%Y-%m-%d")
+        end = dt + timedelta(minutes=duration_min)
+        lines.append("DTSTART:" + dt.strftime("%Y%m%dT%H%M%S"))
+        lines.append("DTEND:" + end.strftime("%Y%m%dT%H%M%S"))
+    else:
+        d = datetime.strptime(service_date, "%Y-%m-%d")
+        lines.append("DTSTART;VALUE=DATE:" + d.strftime("%Y%m%d"))
+        lines.append("DTEND;VALUE=DATE:" + (d + timedelta(days=1)).strftime("%Y%m%d"))
+    lines.append("SUMMARY:" + _ics_escape(summary))
+    if location:
+        lines.append("LOCATION:" + _ics_escape(location))
+    if description:
+        lines.append("DESCRIPTION:" + _ics_escape(description))
+    # Alert the day before and an hour before.
+    for trigger, note in (("-P1D", "Tomorrow you're serving on the AV team"),
+                          ("-PT1H", "You're serving on the AV team in 1 hour")):
+        lines += ["BEGIN:VALARM", "TRIGGER:" + trigger, "ACTION:DISPLAY",
+                  "DESCRIPTION:" + _ics_escape(note), "END:VALARM"]
+    lines += ["END:VEVENT", "END:VCALENDAR"]
+    return "\r\n".join(lines) + "\r\n"
+
+
 def parse_video(url):
     """Turn an arbitrary video link into something we can embed and control.
 

@@ -114,6 +114,7 @@
           {% if a['status'] == 'confirmed' %}<span class="badge badge-green">Confirmed</span>
           {% elif a['status'] == 'declined' %}<span class="badge badge-red">Declined</span>
           {% else %}<span class="badge badge-amber">Scheduled</span>{% endif %}
+          <a href="{{ url_for('user.service_calendar', service_id=a['service_id']) }}" class="btn btn-sm btn-ghost" title="Add to calendar">📅</a>
           <a href="{{ url_for('user.service_detail', service_id=a['service_id']) }}" class="btn btn-sm btn-ghost">View</a>
         </div>
       </div>

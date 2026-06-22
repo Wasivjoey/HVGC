@@ -6,7 +6,7 @@ import os
 
 from flask import (
     Blueprint, render_template, request, redirect, url_for, flash,
-    current_app, send_from_directory, abort,
+    current_app, send_from_directory, abort, Response,
 )
 
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -15,6 +15,7 @@ from db import get_db, now_iso
 from helpers import (
     login_required, current_user, role_training_status, is_qualified, parse_video,
     save_avatar, delete_avatar, avatars_dir, get_announcements, get_polls, poll_is_open,
+    build_ics,
 )
 
 bp = Blueprint("user", __name__)
@@ -375,6 +376,37 @@ def delete_note(service_id, note_id):
     conn.commit()
     conn.close()
     return redirect(url_for("user.service_detail", service_id=service_id))
+
+
+@bp.route("/services/<int:service_id>/calendar.ics")
+@login_required
+def service_calendar(service_id):
+    """Download a calendar invite for the service the user is scheduled in,
+    with reminders so their calendar alerts them beforehand."""
+    user = current_user()
+    conn = get_db()
+    a = conn.execute(
+        "SELECT a.id, r.name AS role_name, s.title, s.service_date, s.start_time,"
+        " s.location, s.notes"
+        " FROM assignments a"
+        " JOIN services s ON s.id = a.service_id"
+        " JOIN roles r ON r.id = a.role_id"
+        " WHERE a.service_id = ? AND a.user_id = ?",
+        (service_id, user["id"]),
+    ).fetchone()
+    conn.close()
+    if a is None:
+        abort(404)
+    summary = f"AV Team: {a['role_name']} — {a['title']}"
+    desc = f"You're serving as {a['role_name']} for {a['title']}."
+    if a["notes"]:
+        desc += "\n\n" + a["notes"]
+    ics = build_ics(f"assignment-{a['id']}@hvgc-lineup", summary, a["service_date"],
+                    a["start_time"], a["location"], desc)
+    return Response(
+        ics, mimetype="text/calendar",
+        headers={"Content-Disposition": f'attachment; filename="hvgc-service-{service_id}.ics"'},
+    )
 
 
 @bp.route("/assignments/<int:assignment_id>/respond", methods=["POST"])

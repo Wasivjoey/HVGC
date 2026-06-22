@@ -42,6 +42,7 @@
         <input type="hidden" name="decision" value="declined">
         <button class="btn btn-sm btn-ghost">Decline</button>
       </form>
+      <a href="{{ url_for('user.service_calendar', service_id=service['id']) }}" class="btn btn-sm btn-ghost">📅 Add to calendar</a>
       <details class="inline-edit">
         <summary>Request swap</summary>
         <form method="post" action="{{ url_for('user.request_swap', assignment_id=a['id']) }}">
