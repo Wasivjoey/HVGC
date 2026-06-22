@@ -14,6 +14,7 @@ from helpers import (
     admin_required, current_user, role_training_status, is_qualified,
     qualified_users_for_role, save_document, delete_document,
     get_announcements, get_polls, notify, notify_all, assignment_conflicts,
+    build_ics,
 )
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
@@ -679,14 +680,30 @@ def assign(service_id):
         (service_id, user_id, role_id, now_iso()),
     )
     svc = conn.execute(
-        "SELECT title, service_date FROM services WHERE id = ?", (service_id,)
+        "SELECT title, service_date, start_time, location, notes FROM services WHERE id = ?",
+        (service_id,),
     ).fetchone()
     role = conn.execute("SELECT name FROM roles WHERE id = ?", (role_id,)).fetchone()
     if svc and role:
+        assignment = conn.execute(
+            "SELECT id FROM assignments WHERE service_id = ? AND user_id = ? AND role_id = ?",
+            (service_id, user_id, role_id),
+        ).fetchone()
+        # Build a calendar invite (.ics) with reminders to attach to the email.
+        desc = f"You're serving as {role['name']} for {svc['title']}."
+        if svc["notes"]:
+            desc += "\n\n" + svc["notes"]
+        ics = build_ics(f"assignment-{assignment['id']}@hvgc-lineup",
+                        f"AV Team: {role['name']} — {svc['title']}",
+                        svc["service_date"], svc["start_time"], svc["location"], desc)
+        cal_link = url_for("user.service_calendar", service_id=service_id, _external=True)
         notify(conn, user_id,
                f"You're scheduled as {role['name']} for {svc['title']} on "
                f"{svc['service_date']}.", url_for("user.service_detail", service_id=service_id),
-               email=True, subject="You've been scheduled — HVGC LINEUP")
+               email=True, subject="You've been scheduled — HVGC LINEUP",
+               attachments=[("hvgc-service.ics", ics, "text", "calendar")],
+               email_extra=("📅 Add this to your calendar — the attached invite includes "
+                            f"reminders the day before and an hour before.\nCalendar link: {cal_link}"))
     conn.commit()
     conn.close()
     flash("Assigned.", "success")

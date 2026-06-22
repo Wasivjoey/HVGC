@@ -16,12 +16,12 @@ from werkzeug.utils import secure_filename
 from db import get_db, now_iso
 
 
-def send_email(to_address, subject, body):
-    """Send a plain-text email. Returns True if actually sent.
+def send_email(to_address, subject, body, attachments=None):
+    """Send a plain-text email, optionally with attachments. Returns True if sent.
 
-    When SMTP isn't configured the message (including any verification link) is
-    written to the application log and the function returns False, so callers can
-    fall back to showing the link on screen.
+    attachments: list of (filename, data, maintype, subtype) tuples.
+    When SMTP isn't configured the message is logged and the function returns
+    False, so callers can fall back to showing links on screen.
     """
     cfg = current_app.config
     if not cfg.get("EMAIL_ENABLED"):
@@ -33,6 +33,10 @@ def send_email(to_address, subject, body):
     msg["From"] = cfg["SMTP_FROM"]
     msg["To"] = to_address
     msg.set_content(body)
+    for filename, data, maintype, subtype in (attachments or []):
+        if isinstance(data, str):
+            data = data.encode("utf-8")
+        msg.add_attachment(data, maintype=maintype, subtype=subtype, filename=filename)
     host, port = cfg["SMTP_HOST"], cfg["SMTP_PORT"]
     try:
         # Port 465 = implicit SSL; 587/25 = plain + STARTTLS.
@@ -294,12 +298,14 @@ def is_qualified(conn, user_id, role_id):
     return completed >= required
 
 
-def notify(conn, user_id, body, link=None, email=False, subject=None):
+def notify(conn, user_id, body, link=None, email=False, subject=None,
+           attachments=None, email_extra=None):
     """Queue an in-app notification for a user. Caller commits.
 
     When ``email`` is set, also send the message to the user's email address
-    (used for high-priority events). Email failures never block the in-app
-    notification — send_email already degrades gracefully when SMTP is unset.
+    (used for high-priority events). ``email_extra`` adds an email-only line
+    (e.g. a calendar link) and ``attachments`` are passed to send_email. Email
+    failures never block the in-app notification.
     """
     conn.execute(
         "INSERT INTO notifications (user_id, body, link, is_read, created_at)"
@@ -317,10 +323,14 @@ def notify(conn, user_id, body, link=None, email=False, subject=None):
                     url = request.url_root.rstrip("/") + link
                 except RuntimeError:  # no request context (shouldn't happen here)
                     url = link
-            message = (f"Hi {row['name']},\n\n{body}"
-                       + (f"\n\nOpen HVGC LINEUP: {url}" if url else "")
-                       + "\n\n— HVGC LINEUP")
-            send_email(row["email"], subject or "HVGC LINEUP update", message)
+            message = f"Hi {row['name']},\n\n{body}"
+            if email_extra:
+                message += f"\n\n{email_extra}"
+            if url:
+                message += f"\n\nOpen HVGC LINEUP: {url}"
+            message += "\n\n— HVGC LINEUP"
+            send_email(row["email"], subject or "HVGC LINEUP update", message,
+                       attachments=attachments)
 
 
 def notify_all(conn, body, link=None, exclude_id=None):
