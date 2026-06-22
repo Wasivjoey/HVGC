@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Team Calendar · HVGC LINEUP{% endblock %}
+{% block body %}
+<div class="page-head">
+  <div>
+    <h1>Team Calendar</h1>
+    <p>Every service this month and everyone scheduled to serve.</p>
+  </div>
+  <a href="{{ url_for('user.my_schedule') }}" class="btn btn-ghost">My schedule</a>
+</div>
+
+<div class="cal-toolbar">
+  <a href="{{ url_for('user.calendar', month=prev_month) }}" class="btn btn-sm btn-ghost">‹ Prev</a>
+  <h2 class="cal-month">{{ month_label }}</h2>
+  <div class="row-actions">
+    <a href="{{ url_for('user.calendar', month=this_month) }}" class="btn btn-sm btn-ghost">Today</a>
+    <a href="{{ url_for('user.calendar', month=next_month) }}" class="btn btn-sm btn-ghost">Next ›</a>
+  </div>
+</div>
+
+<div class="cal-scroll">
+  <div class="cal-grid">
+    {% for wd in weekday_names %}<div class="cal-head">{{ wd }}</div>{% endfor %}
+    {% for week in weeks %}
+      {% for d in week %}
+      <div class="cal-cell{{ ' other-month' if d.month != cur_month }}{{ ' today' if d.isoformat() == today }}">
+        <div class="cal-day">{{ d.day }}</div>
+        {% for item in services_by_date.get(d.isoformat(), []) %}
+        <div class="cal-svc">
+          <div class="cal-svc-title">{{ item['svc']['title'] }}{% if item['svc']['start_time'] %} · {{ item['svc']['start_time'] }}{% endif %}</div>
+          {% for a in item['roster'] %}
+          <div class="cal-role{{ ' me' if a['user_id'] == me_id }}"><span class="cr-role">{{ a['role_name'] }}</span> {{ a['user_name'].split()[0] }}</div>
+          {% endfor %}
+          {% if not item['roster'] %}<div class="cal-noone">No one scheduled yet</div>{% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      {% endfor %}
+    {% endfor %}
+  </div>
+</div>
+
+<p class="muted" style="font-size:13px;margin-top:12px;">
+  <span class="cal-role me" style="display:inline-block;padding:1px 8px;">You</span> highlights services you're serving on.
+</p>
+{% endblock %}

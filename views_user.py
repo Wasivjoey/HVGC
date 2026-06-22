@@ -407,6 +407,54 @@ def my_schedule():
     return render_template("my_schedule.html", upcoming=upcoming, past=past, counts=counts)
 
 
+@bp.route("/calendar")
+@login_required
+def calendar():
+    """A month-grid view of the whole team's schedule — every service and
+    everyone scheduled to serve on it."""
+    import calendar as calmod
+    user = current_user()
+    today = date.today()
+    try:
+        y, m = map(int, (request.args.get("month") or "").split("-"))
+        first = date(y, m, 1)
+    except (ValueError, TypeError):
+        y, m = today.year, today.month
+        first = date(y, m, 1)
+
+    prev_month = (first - timedelta(days=1)).strftime("%Y-%m")
+    next_first = date(y + 1, 1, 1) if m == 12 else date(y, m + 1, 1)
+    last_day = (next_first - timedelta(days=1)).day
+
+    conn = get_db()
+    svc_rows = conn.execute(
+        "SELECT id, title, service_date, start_time, location FROM services"
+        " WHERE service_date >= ? AND service_date <= ?"
+        " ORDER BY service_date, start_time",
+        (first.isoformat(), date(y, m, last_day).isoformat()),
+    ).fetchall()
+    services_by_date = {}
+    for s in svc_rows:
+        roster = conn.execute(
+            "SELECT r.name AS role_name, u.name AS user_name, a.user_id, a.status"
+            " FROM assignments a JOIN roles r ON r.id = a.role_id"
+            " JOIN users u ON u.id = a.user_id WHERE a.service_id = ?"
+            " ORDER BY r.name, u.name",
+            (s["id"],),
+        ).fetchall()
+        services_by_date.setdefault(s["service_date"], []).append({"svc": s, "roster": roster})
+    conn.close()
+
+    weeks = calmod.Calendar(firstweekday=6).monthdatescalendar(y, m)  # Sunday-first
+    return render_template(
+        "calendar.html", weeks=weeks, services_by_date=services_by_date,
+        cur_month=m, today=today.isoformat(), month_label=first.strftime("%B %Y"),
+        prev_month=prev_month, next_month=next_first.strftime("%Y-%m"),
+        this_month=today.strftime("%Y-%m"), me_id=user["id"],
+        weekday_names=["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+    )
+
+
 @bp.route("/my-schedule/calendar.ics")
 @login_required
 def schedule_calendar():

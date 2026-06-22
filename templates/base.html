@@ -33,6 +33,7 @@
       <p class="nav-label">Volunteer</p>
       <a href="{{ url_for('user.dashboard') }}" class="{{ 'active' if request.endpoint == 'user.dashboard' }}">📊 Dashboard</a>
       <a href="{{ url_for('user.my_schedule') }}" class="{{ 'active' if request.endpoint == 'user.my_schedule' }}">🗓️ My Schedule</a>
+      <a href="{{ url_for('user.calendar') }}" class="{{ 'active' if request.endpoint == 'user.calendar' }}">📆 Team Calendar</a>
       <a href="{{ url_for('user.availability') }}" class="{{ 'active' if request.endpoint == 'user.availability' }}">📅 My Availability</a>
       <a href="{{ url_for('user.services') }}" class="{{ 'active' if request.endpoint in ['user.services','user.service_detail'] }}">⛪ Services</a>
       <a href="{{ url_for('user.swaps') }}" class="{{ 'active' if request.endpoint == 'user.swaps' }}">🔁 Role Swaps</a>
