@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 {% block title %}Team Calendar · HVGC LINEUP{% endblock %}
 {% block body %}
+{# A stable per-person colour, keyed off the user id so it's the same everywhere #}
+{% set palette = ['#e0405a','#e07b2b','#c79a2e','#2f9e54','#159e8e','#2f80d8','#5b6cff','#8a5cd8','#c2479b','#6f8a3a','#2b96a8','#b0613c'] %}
 <div class="page-head">
   <div>
     <h1>Team Calendar</h1>
@@ -29,7 +31,11 @@
         <div class="cal-svc">
           <div class="cal-svc-title">{{ item['svc']['title'] }}{% if item['svc']['start_time'] %} · {{ item['svc']['start_time'] }}{% endif %}</div>
           {% for a in item['roster'] %}
-          <div class="cal-role{{ ' me' if a['user_id'] == me_id }}"><span class="cr-role">{{ a['role_name'] }}</span> {{ a['user_name'].split()[0] }}</div>
+          {% set col = palette[a['user_id'] % palette|length] %}
+          <div class="cal-role{{ ' me' if a['user_id'] == me_id }}" title="{{ a['user_name'] }} — {{ a['role_name'] }}">
+            <span class="cal-dot" style="background:{{ col }};"></span><span class="cr-role">{{ a['role_name'] }}</span>
+            <span class="cn" style="color:{{ col }};">{{ a['user_name'].split()[0] }}</span>
+          </div>
           {% endfor %}
           {% if not item['roster'] %}<div class="cal-noone">No one scheduled yet</div>{% endif %}
         </div>
@@ -41,6 +47,7 @@
 </div>
 
 <p class="muted" style="font-size:13px;margin-top:12px;">
-  <span class="cal-role me" style="display:inline-block;padding:1px 8px;">You</span> highlights services you're serving on.
+  Each volunteer has their own colour, so you can follow a person across the month.
+  Your own slots are <span class="cal-role me" style="display:inline-block;padding:1px 8px;">highlighted</span>.
 </p>
 {% endblock %}

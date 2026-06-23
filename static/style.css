@@ -282,10 +282,11 @@ details.inline-edit[open] { margin-top: 10px; }
 .cal-cell.today .cal-day { color: var(--brand-dark); }
 .cal-svc { background: var(--blue-bg); border-radius: 7px; padding: 5px 6px; margin-bottom: 5px; }
 .cal-svc-title { font-weight: 600; font-size: 11.5px; color: var(--brand-dark); margin-bottom: 3px; line-height: 1.25; }
-.cal-role { font-size: 11px; line-height: 1.55; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cal-role { font-size: 11px; line-height: 1.6; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cal-role .cr-role { color: var(--muted); }
-.cal-role.me { background: var(--green-bg); color: var(--green); border-radius: 4px; padding: 0 4px; font-weight: 600; }
-.cal-role.me .cr-role { color: var(--green); }
+.cal-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 4px; vertical-align: middle; flex-shrink: 0; }
+.cal-role .cn { font-weight: 600; }
+.cal-role.me { background: rgba(91,108,255,.10); border-radius: 4px; padding: 0 4px; box-shadow: inset 2px 0 0 var(--brand); }
 .cal-noone { font-size: 11px; color: var(--muted); font-style: italic; }
 
 /* polls */
