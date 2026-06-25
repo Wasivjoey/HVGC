@@ -14,7 +14,7 @@ from helpers import (
     admin_required, current_user, role_training_status, is_qualified,
     qualified_users_for_role, save_document, delete_document,
     get_announcements, get_polls, notify, notify_all, assignment_conflicts,
-    build_ics,
+    build_ics, delete_avatar,
 )
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
@@ -293,6 +293,38 @@ def reset_user_password(user_id):
     flash(f"Password reset for @{u['username']}. Temporary password: {temp} — "
           "they'll be required to change it at next sign-in.", "success")
     return redirect(url_for("admin.user_detail", user_id=user_id))
+
+
+@bp.route("/users/<int:user_id>/delete", methods=["POST"])
+@admin_required
+def delete_user(user_id):
+    me = current_user()
+    if user_id == me["id"]:
+        flash("You can't delete your own account.", "warning")
+        return redirect(url_for("admin.user_detail", user_id=user_id))
+    conn = get_db()
+    u = conn.execute(
+        "SELECT name, is_admin, avatar FROM users WHERE id = ?", (user_id,)
+    ).fetchone()
+    if u is None:
+        conn.close()
+        flash("User not found.", "danger")
+        return redirect(url_for("admin.users"))
+    if u["is_admin"]:
+        admins = conn.execute(
+            "SELECT COUNT(*) AS c FROM users WHERE is_admin = 1"
+        ).fetchone()["c"]
+        if admins <= 1:
+            conn.close()
+            flash("You can't delete the last administrator.", "warning")
+            return redirect(url_for("admin.user_detail", user_id=user_id))
+    # Remove their avatar file; the database cascades remove the rest of their data.
+    delete_avatar(u["avatar"])
+    conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
+    conn.commit()
+    conn.close()
+    flash(f"Deleted {u['name']}'s account and all of their data.", "info")
+    return redirect(url_for("admin.users"))
 
 
 @bp.route("/users/<int:user_id>/flags", methods=["POST"])

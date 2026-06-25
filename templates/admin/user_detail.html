@@ -147,4 +147,17 @@
     {% endfor %}
   </div>
 </div>
+
+{% if u['id'] != current_user['id'] %}
+<div class="card" style="border:1px solid var(--red);">
+  <h3 style="color:var(--red);">⚠️ Danger zone</h3>
+  <p class="muted" style="font-size:13px;margin-top:0;">Permanently delete this account and
+    everything tied to it — roles, training records, schedule assignments, availability,
+    notifications and swap requests. This cannot be undone.</p>
+  <form method="post" action="{{ url_for('admin.delete_user', user_id=u['id']) }}"
+        onsubmit="return confirm('Delete {{ u['name'] }}\'s account permanently? This removes all of their data and cannot be undone.');">
+    <button class="btn btn-sm btn-red">Delete this account</button>
+  </form>
+</div>
+{% endif %}
 {% endblock %}
