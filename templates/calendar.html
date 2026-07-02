@@ -12,11 +12,20 @@
 </div>
 
 <div class="cal-toolbar">
-  <a href="{{ url_for('user.calendar', month=prev_month) }}" class="btn btn-sm btn-ghost">‹ Prev</a>
+  <a href="{{ url_for('user.calendar', month=prev_month, team=team_filter) }}" class="btn btn-sm btn-ghost">‹ Prev</a>
   <h2 class="cal-month">{{ month_label }}</h2>
   <div class="row-actions">
-    <a href="{{ url_for('user.calendar', month=this_month) }}" class="btn btn-sm btn-ghost">Today</a>
-    <a href="{{ url_for('user.calendar', month=next_month) }}" class="btn btn-sm btn-ghost">Next ›</a>
+    <form method="get" class="inline-form">
+      <input type="hidden" name="month" value="{{ cur_ym }}">
+      <select name="team" onchange="this.form.submit()">
+        <option value="">All teams</option>
+        {% for t in teams %}
+        <option value="{{ t['id'] }}" {{ 'selected' if t['id'] == team_filter }}>{{ t['name'] }}</option>
+        {% endfor %}
+      </select>
+    </form>
+    <a href="{{ url_for('user.calendar', month=this_month, team=team_filter) }}" class="btn btn-sm btn-ghost">Today</a>
+    <a href="{{ url_for('user.calendar', month=next_month, team=team_filter) }}" class="btn btn-sm btn-ghost">Next ›</a>
   </div>
 </div>
 

@@ -80,15 +80,51 @@ def dashboard():
 @admin_required
 def users():
     conn = get_db()
-    rows = conn.execute("SELECT * FROM users ORDER BY is_admin DESC, name").fetchall()
+    team_filter = request.args.get("team", type=int)
+    if team_filter:
+        rows = conn.execute(
+            "SELECT u.*, t.name AS team_name FROM users u"
+            " LEFT JOIN teams t ON t.id = u.team_id"
+            " WHERE u.team_id = ? ORDER BY u.is_admin DESC, u.name",
+            (team_filter,),
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            "SELECT u.*, t.name AS team_name FROM users u"
+            " LEFT JOIN teams t ON t.id = u.team_id"
+            " ORDER BY u.is_admin DESC, u.name",
+        ).fetchall()
     people = []
     for u in rows:
         role_count = conn.execute(
             "SELECT COUNT(*) AS c FROM user_roles WHERE user_id = ?", (u["id"],)
         ).fetchone()["c"]
         people.append({"u": u, "roles": role_count})
+    teams = conn.execute("SELECT * FROM teams ORDER BY name").fetchall()
     conn.close()
-    return render_template("admin/users.html", people=people)
+    return render_template("admin/users.html", people=people, teams=teams,
+                           team_filter=team_filter)
+
+
+@bp.route("/users/bulk-team", methods=["POST"])
+@admin_required
+def bulk_team():
+    """Move the selected people into a team in one action."""
+    conn = get_db()
+    team_id = request.form.get("team_id", type=int)
+    ids = [int(i) for i in request.form.getlist("user_ids") if str(i).isdigit()]
+    team = conn.execute("SELECT name FROM teams WHERE id = ?", (team_id,)).fetchone()
+    if not team or not ids:
+        conn.close()
+        flash("Pick at least one person and a team.", "warning")
+        return redirect(url_for("admin.users"))
+    for uid in ids:
+        conn.execute("UPDATE users SET team_id = ? WHERE id = ?", (team_id, uid))
+    conn.commit()
+    conn.close()
+    flash(f"Moved {len(ids)} member{'s' if len(ids) != 1 else ''} to {team['name']}.",
+          "success")
+    return redirect(url_for("admin.users"))
 
 
 @bp.route("/users/<int:user_id>")

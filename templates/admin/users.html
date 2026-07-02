@@ -6,14 +6,24 @@
     <h1>People</h1>
     <p>Everyone on the team. Click a person to assign roles &amp; training.</p>
   </div>
+  <form method="get" class="inline-form">
+    <select name="team" onchange="this.form.submit()">
+      <option value="">All teams</option>
+      {% for t in teams %}
+      <option value="{{ t['id'] }}" {{ 'selected' if t['id'] == team_filter }}>{{ t['name'] }}</option>
+      {% endfor %}
+    </select>
+  </form>
 </div>
 
+<form method="post" action="{{ url_for('admin.bulk_team') }}">
 <div class="card table-card">
   <table>
-    <thead><tr><th>Name</th><th>Email</th><th>Roles</th><th>Type</th><th>Status</th><th></th></tr></thead>
+    <thead><tr><th></th><th>Name</th><th>Email</th><th>Team</th><th>Roles</th><th>Tier</th><th>Status</th><th></th></tr></thead>
     <tbody>
     {% for p in people %}
       <tr>
+        <td><input type="checkbox" name="user_ids" value="{{ p['u']['id'] }}"></td>
         <td>
           <div class="name-cell">
             {% if p['u']['avatar'] %}
@@ -28,8 +38,13 @@
           </div>
         </td>
         <td class="muted">{{ p['u']['email'] }}</td>
+        <td>{% if p['u']['team_name'] %}<span class="badge badge-blue">{{ p['u']['team_name'] }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
         <td><span class="badge badge-gray">{{ p['roles'] }} role{{ 's' if p['roles'] != 1 }}</span></td>
-        <td>{% if p['u']['is_admin'] %}<span class="badge badge-blue">Admin</span>{% else %}<span class="badge badge-gray">Volunteer</span>{% endif %}</td>
+        <td>
+          {% if p['u']['is_admin'] %}<span class="badge badge-blue">Admin</span>
+          {% elif p['u']['team_lead'] %}<span class="badge badge-amber">Team Lead</span>
+          {% else %}<span class="badge badge-gray">Volunteer</span>{% endif %}
+        </td>
         <td>
           {% if not p['u']['approved'] %}<span class="badge badge-amber">Pending</span>
           {% elif not p['u']['is_active'] %}<span class="badge badge-red">Inactive</span>
@@ -37,9 +52,7 @@
         </td>
         <td class="row-actions">
           {% if not p['u']['approved'] %}
-          <form method="post" action="{{ url_for('admin.quick_approve', user_id=p['u']['id']) }}" class="inline-form">
-            <button class="btn btn-sm btn-green">Approve</button>
-          </form>
+          <button class="btn btn-sm btn-green" formaction="{{ url_for('admin.quick_approve', user_id=p['u']['id']) }}" formmethod="post">Approve</button>
           {% endif %}
           <a href="{{ url_for('admin.user_detail', user_id=p['u']['id']) }}" class="btn btn-sm btn-ghost">Manage</a>
         </td>
@@ -48,4 +61,16 @@
     </tbody>
   </table>
 </div>
+
+<div class="card bulk-bar">
+  <strong>Move selected to team:</strong>
+  <select name="team_id" required>
+    {% for t in teams %}
+    <option value="{{ t['id'] }}">{{ t['name'] }}</option>
+    {% endfor %}
+  </select>
+  <button class="btn btn-sm">Move selected</button>
+  <span class="muted" style="font-size:13px;">Tick people above, pick a team, and click Move.</span>
+</div>
+</form>
 {% endblock %}

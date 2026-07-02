@@ -427,7 +427,10 @@ def calendar():
     next_first = date(y + 1, 1, 1) if m == 12 else date(y, m + 1, 1)
     last_day = (next_first - timedelta(days=1)).day
 
+    team_filter = request.args.get("team", type=int)
+
     conn = get_db()
+    teams = conn.execute("SELECT * FROM teams ORDER BY name").fetchall()
     svc_rows = conn.execute(
         "SELECT id, title, service_date, start_time, location FROM services"
         " WHERE service_date >= ? AND service_date <= ?"
@@ -436,13 +439,23 @@ def calendar():
     ).fetchall()
     services_by_date = {}
     for s in svc_rows:
-        roster = conn.execute(
-            "SELECT r.name AS role_name, u.name AS user_name, a.user_id, a.status"
-            " FROM assignments a JOIN roles r ON r.id = a.role_id"
-            " JOIN users u ON u.id = a.user_id WHERE a.service_id = ?"
-            " ORDER BY r.name, u.name",
-            (s["id"],),
-        ).fetchall()
+        if team_filter:
+            roster = conn.execute(
+                "SELECT r.name AS role_name, u.name AS user_name, a.user_id, a.status"
+                " FROM assignments a JOIN roles r ON r.id = a.role_id"
+                " JOIN users u ON u.id = a.user_id"
+                " WHERE a.service_id = ? AND u.team_id = ?"
+                " ORDER BY r.name, u.name",
+                (s["id"], team_filter),
+            ).fetchall()
+        else:
+            roster = conn.execute(
+                "SELECT r.name AS role_name, u.name AS user_name, a.user_id, a.status"
+                " FROM assignments a JOIN roles r ON r.id = a.role_id"
+                " JOIN users u ON u.id = a.user_id WHERE a.service_id = ?"
+                " ORDER BY r.name, u.name",
+                (s["id"],),
+            ).fetchall()
         services_by_date.setdefault(s["service_date"], []).append({"svc": s, "roster": roster})
     conn.close()
 
@@ -451,8 +464,10 @@ def calendar():
         "calendar.html", weeks=weeks, services_by_date=services_by_date,
         cur_month=m, today=today.isoformat(), month_label=first.strftime("%B %Y"),
         prev_month=prev_month, next_month=next_first.strftime("%Y-%m"),
-        this_month=today.strftime("%Y-%m"), me_id=user["id"],
+        this_month=today.strftime("%Y-%m"), cur_ym=first.strftime("%Y-%m"),
+        me_id=user["id"],
         weekday_names=["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+        teams=teams, team_filter=team_filter,
     )
 
 
