@@ -948,7 +948,10 @@ def team_member(user_id):
     actor = current_user()
     conn = get_db()
     m = _member_or_403(actor, user_id, conn)
-    all_roles = conn.execute("SELECT * FROM roles ORDER BY name").fetchall()
+    all_roles = conn.execute(
+        "SELECT * FROM roles WHERE team_id IS NULL OR team_id = ? ORDER BY name",
+        (m["team_id"],),
+    ).fetchall()
     assigned = {r["role_id"] for r in conn.execute(
         "SELECT role_id FROM user_roles WHERE user_id = ?", (user_id,)).fetchall()}
     role_view = []

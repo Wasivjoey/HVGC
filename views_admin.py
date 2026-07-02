@@ -137,7 +137,11 @@ def user_detail(user_id):
         flash("User not found.", "danger")
         return redirect(url_for("admin.users"))
 
-    all_roles = conn.execute("SELECT * FROM roles ORDER BY name").fetchall()
+    # Only roles available to this user's team (global roles have no team).
+    all_roles = conn.execute(
+        "SELECT * FROM roles WHERE team_id IS NULL OR team_id = ? ORDER BY name",
+        (u["team_id"],),
+    ).fetchall()
     assigned_role_ids = {
         r["role_id"] for r in conn.execute(
             "SELECT role_id FROM user_roles WHERE user_id = ?", (user_id,)
@@ -498,10 +502,12 @@ def roles():
     if request.method == "POST":
         name = request.form.get("name", "").strip()
         description = request.form.get("description", "").strip()
+        team_id = request.form.get("team_id") or None
         if name:
             try:
                 conn.execute(
-                    "INSERT INTO roles (name, description) VALUES (?, ?)", (name, description)
+                    "INSERT INTO roles (name, description, team_id) VALUES (?, ?, ?)",
+                    (name, description, team_id),
                 )
                 conn.commit()
                 flash("Role created.", "success")
@@ -510,7 +516,10 @@ def roles():
         conn.close()
         return redirect(url_for("admin.roles"))
 
-    rows = conn.execute("SELECT * FROM roles ORDER BY name").fetchall()
+    rows = conn.execute(
+        "SELECT r.*, t.name AS team_name FROM roles r"
+        " LEFT JOIN teams t ON t.id = r.team_id ORDER BY r.name"
+    ).fetchall()
     role_view = []
     for r in rows:
         people = conn.execute(
@@ -518,8 +527,9 @@ def roles():
         ).fetchone()["c"]
         qualified = len(qualified_users_for_role(conn, r["id"]))
         role_view.append({"r": r, "people": people, "qualified": qualified})
+    teams = conn.execute("SELECT * FROM teams ORDER BY name").fetchall()
     conn.close()
-    return render_template("admin/roles.html", role_view=role_view)
+    return render_template("admin/roles.html", role_view=role_view, teams=teams)
 
 
 @bp.route("/roles/<int:role_id>/edit", methods=["POST"])
@@ -528,10 +538,11 @@ def edit_role(role_id):
     conn = get_db()
     name = request.form.get("name", "").strip()
     description = request.form.get("description", "").strip()
+    team_id = request.form.get("team_id") or None
     if name:
         conn.execute(
-            "UPDATE roles SET name = ?, description = ? WHERE id = ?",
-            (name, description, role_id),
+            "UPDATE roles SET name = ?, description = ?, team_id = ? WHERE id = ?",
+            (name, description, team_id, role_id),
         )
         conn.commit()
         flash("Role updated.", "success")

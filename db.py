@@ -61,7 +61,8 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS roles (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     name        TEXT NOT NULL UNIQUE,
-    description TEXT
+    description TEXT,
+    team_id     INTEGER      -- NULL = available to all teams; else team-specific
 );
 
 -- A role assigned to a user by an admin. A user may only be *scheduled* for a
@@ -436,6 +437,11 @@ def _migrate(conn):
         conn.commit()
     if "team_id" not in ucols:
         conn.execute("ALTER TABLE users ADD COLUMN team_id INTEGER")
+        conn.commit()
+
+    rcols = _columns(conn, "roles")
+    if "team_id" not in rcols:
+        conn.execute("ALTER TABLE roles ADD COLUMN team_id INTEGER")
         conn.commit()
 
     # Enforce "one role per user per service" at the database level (only when

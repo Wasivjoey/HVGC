@@ -14,7 +14,8 @@
     <div class="card">
       <div class="list-item" style="border:none;padding:0;">
         <div>
-          <strong>{{ rv['r']['name'] }}</strong><br>
+          <strong>{{ rv['r']['name'] }}</strong>
+          {% if rv['r']['team_name'] %}<span class="badge badge-blue">{{ rv['r']['team_name'] }}</span>{% else %}<span class="badge badge-gray">All teams</span>{% endif %}<br>
           <span class="meta">{{ rv['r']['description'] or '' }}</span>
         </div>
         <div class="pill-row">
@@ -29,6 +30,13 @@
           <input type="text" name="name" value="{{ rv['r']['name'] }}" required>
           <label>Description</label>
           <input type="text" name="description" value="{{ rv['r']['description'] or '' }}">
+          <label>Team</label>
+          <select name="team_id">
+            <option value="">All teams</option>
+            {% for t in teams %}
+            <option value="{{ t['id'] }}" {{ 'selected' if t['id'] == rv['r']['team_id'] }}>{{ t['name'] }}</option>
+            {% endfor %}
+          </select>
           <button class="btn btn-sm" style="margin-top:10px;">Save</button>
         </form>
         <form method="post" action="{{ url_for('admin.delete_role', role_id=rv['r']['id']) }}" onsubmit="return confirm('Delete this role? Assignments using it will be removed.');">
@@ -46,6 +54,14 @@
       <input type="text" id="name" name="name" placeholder="e.g. Stage Manager" required>
       <label for="description">Description</label>
       <textarea id="description" name="description" placeholder="What this role does"></textarea>
+      <label for="team_id">Team</label>
+      <select id="team_id" name="team_id">
+        <option value="">All teams</option>
+        {% for t in teams %}
+        <option value="{{ t['id'] }}">{{ t['name'] }}</option>
+        {% endfor %}
+      </select>
+      <p class="tag">“All teams” roles can be assigned to anyone; a team-specific role only to that team's members.</p>
       <button class="btn" style="margin-top:14px;">Create role</button>
     </form>
   </div>
