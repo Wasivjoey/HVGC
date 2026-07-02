@@ -1,0 +1,23 @@
+# Render blueprint for Español para Todos.
+# Deploy: push this repo to GitHub, then in Render click "New +" → "Blueprint"
+# and select the repo. rootDir keeps Render building only this subfolder.
+services:
+  - type: web
+    name: espanol-para-todos
+    runtime: python
+    rootDir: spanish-pwa
+    plan: free
+    buildCommand: "pip install -r requirements.txt && python make_icons.py"
+    startCommand: "gunicorn app:app --bind 0.0.0.0:$PORT"
+    healthCheckPath: /api/curriculum
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.4"
+      - key: SECRET_KEY
+        generateValue: true      # stable secret so logins survive restarts
+      - key: DATA_DIR
+        value: /data
+    disk:
+      name: espanol-data          # persists the SQLite database across deploys
+      mountPath: /data
+      sizeGB: 1

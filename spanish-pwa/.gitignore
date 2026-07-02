@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+data/
+public/icons/*.png
+.DS_Store
+*.log
+venv/
+.venv/
