@@ -29,6 +29,12 @@ if USE_PG:
     import psycopg2.extras
 
 SCHEMA = """
+CREATE TABLE IF NOT EXISTS teams (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    name       TEXT NOT NULL UNIQUE,
+    created_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS users (
     id             INTEGER PRIMARY KEY AUTOINCREMENT,
     name           TEXT NOT NULL,
@@ -37,6 +43,8 @@ CREATE TABLE IF NOT EXISTS users (
     phone          TEXT,
     password_hash  TEXT NOT NULL,
     is_admin       INTEGER NOT NULL DEFAULT 0,
+    team_lead      INTEGER NOT NULL DEFAULT 0,  -- can manage members of their team
+    team_id        INTEGER,                     -- which team the user belongs to
     is_active      INTEGER NOT NULL DEFAULT 1,
     email_verified INTEGER NOT NULL DEFAULT 0,  -- has the user confirmed their email
     verify_token   TEXT,                        -- one-time email verification token
@@ -253,6 +261,12 @@ def now_iso():
     return datetime.utcnow().isoformat(timespec="seconds")
 
 
+def default_team_id(conn):
+    """Id of the default 'Ministry Team' (new members join it)."""
+    row = conn.execute("SELECT id FROM teams WHERE name = ?", ("Ministry Team",)).fetchone()
+    return row["id"] if row else None
+
+
 def _columns(conn, table):
     if USE_PG:
         rows = conn.execute(
@@ -417,6 +431,12 @@ def _migrate(conn):
     if "hide_volunteer_menu" not in ucols:
         conn.execute("ALTER TABLE users ADD COLUMN hide_volunteer_menu INTEGER NOT NULL DEFAULT 0")
         conn.commit()
+    if "team_lead" not in ucols:
+        conn.execute("ALTER TABLE users ADD COLUMN team_lead INTEGER NOT NULL DEFAULT 0")
+        conn.commit()
+    if "team_id" not in ucols:
+        conn.execute("ALTER TABLE users ADD COLUMN team_id INTEGER")
+        conn.commit()
 
     # Enforce "one role per user per service" at the database level (only when
     # existing data allows it).
@@ -424,6 +444,17 @@ def _migrate(conn):
 
 
 def _seed(conn):
+    # Ensure a default team exists and every account belongs to a team.
+    team = conn.execute("SELECT id FROM teams WHERE name = ?", ("Ministry Team",)).fetchone()
+    if team is None:
+        team_id = execute_returning_id(
+            conn, "INSERT INTO teams (name, created_at) VALUES (?, ?)",
+            ("Ministry Team", now_iso()))
+    else:
+        team_id = team["id"]
+    conn.execute("UPDATE users SET team_id = ? WHERE team_id IS NULL", (team_id,))
+    conn.commit()
+
     # Seed default AV roles once.
     existing_roles = conn.execute("SELECT COUNT(*) AS c FROM roles").fetchone()["c"]
     if existing_roles == 0:
@@ -448,14 +479,15 @@ def _seed(conn):
     if admin is None:
         conn.execute(
             "INSERT INTO users (name, username, email, phone, password_hash, is_admin,"
-            " is_active, email_verified, approved, created_at)"
-            " VALUES (?, ?, ?, ?, ?, 1, 1, 1, 1, ?)",
+            " is_active, email_verified, approved, team_id, created_at)"
+            " VALUES (?, ?, ?, ?, ?, 1, 1, 1, 1, ?, ?)",
             (
                 "Team Administrator",
                 "admin",
                 "admin@avteam.app",
                 "",
                 generate_password_hash("admin123", method="pbkdf2:sha256"),
+                team_id,
                 now_iso(),
             ),
         )

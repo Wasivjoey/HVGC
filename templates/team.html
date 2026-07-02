@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}My Team · HVGC LINEUP{% endblock %}
+{% block body %}
+<div class="page-head">
+  <div>
+    <h1>{{ team['name'] if team else 'My Team' }}</h1>
+    <p>Manage the members of your team — assign roles &amp; training, and reset passwords.</p>
+  </div>
+</div>
+
+<div class="card table-card">
+  <table>
+    <thead><tr><th>Member</th><th>Roles</th><th>Tier</th><th></th></tr></thead>
+    <tbody>
+    {% for p in members %}
+      <tr>
+        <td>
+          <div class="name-cell">
+            {% if p['u']['avatar'] %}
+            <img class="avatar-sm" src="{{ url_for('user.user_avatar', user_id=p['u']['id']) }}" alt="">
+            {% else %}
+            <span class="avatar-sm avatar-sm-letter">{{ p['u']['name'][0]|upper }}</span>
+            {% endif %}
+            <div><strong>{{ p['u']['name'] }}</strong><br><span class="muted" style="font-size:12px;">@{{ p['u']['username'] }}</span></div>
+          </div>
+        </td>
+        <td><span class="badge badge-gray">{{ p['roles'] }} role{{ 's' if p['roles'] != 1 }}</span></td>
+        <td>
+          {% if p['u']['is_admin'] %}<span class="badge badge-blue">Admin</span>
+          {% elif p['u']['team_lead'] %}<span class="badge badge-amber">Team Lead</span>
+          {% else %}<span class="badge badge-gray">Member</span>{% endif %}
+        </td>
+        <td>
+          {% if p['manage'] %}
+          <a href="{{ url_for('user.team_member', user_id=p['u']['id']) }}" class="btn btn-sm btn-ghost">Manage</a>
+          {% else %}<span class="muted" style="font-size:13px;">—</span>{% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

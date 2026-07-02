@@ -9,7 +9,8 @@ from flask import (
 )
 from werkzeug.security import generate_password_hash
 
-from db import get_db, now_iso, execute_returning_id, ensure_one_role_index
+from db import (get_db, now_iso, execute_returning_id, ensure_one_role_index,
+                default_team_id)
 from helpers import (
     admin_required, current_user, role_training_status, is_qualified,
     qualified_users_for_role, save_document, delete_document,
@@ -133,9 +134,11 @@ def user_detail(user_id):
             "status": ut["status"] if ut else None,
         })
 
+    teams = conn.execute("SELECT * FROM teams ORDER BY name").fetchall()
     conn.close()
     return render_template(
         "admin/user_detail.html", u=u, role_view=role_view, training_view=training_view,
+        teams=teams,
     )
 
 
@@ -327,6 +330,77 @@ def delete_user(user_id):
     return redirect(url_for("admin.users"))
 
 
+@bp.route("/users/<int:user_id>/team", methods=["POST"])
+@admin_required
+def set_user_team(user_id):
+    conn = get_db()
+    team_id = request.form.get("team_id") or None
+    conn.execute("UPDATE users SET team_id = ? WHERE id = ?", (team_id, user_id))
+    conn.commit()
+    conn.close()
+    flash("Team updated.", "success")
+    return redirect(url_for("admin.user_detail", user_id=user_id))
+
+
+@bp.route("/teams", methods=["GET", "POST"])
+@admin_required
+def teams():
+    conn = get_db()
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        if name:
+            try:
+                conn.execute("INSERT INTO teams (name, created_at) VALUES (?, ?)",
+                             (name, now_iso()))
+                conn.commit()
+                flash("Team created.", "success")
+            except Exception:
+                flash("A team with that name already exists.", "danger")
+        conn.close()
+        return redirect(url_for("admin.teams"))
+    rows = conn.execute("SELECT * FROM teams ORDER BY name").fetchall()
+    team_view = []
+    for t in rows:
+        members = conn.execute("SELECT COUNT(*) AS c FROM users WHERE team_id = ?",
+                               (t["id"],)).fetchone()["c"]
+        leads = conn.execute("SELECT name FROM users WHERE team_id = ? AND team_lead = 1"
+                             " ORDER BY name", (t["id"],)).fetchall()
+        team_view.append({"t": t, "members": members, "leads": [l["name"] for l in leads]})
+    conn.close()
+    return render_template("admin/teams.html", team_view=team_view)
+
+
+@bp.route("/teams/<int:team_id>/rename", methods=["POST"])
+@admin_required
+def rename_team(team_id):
+    conn = get_db()
+    name = request.form.get("name", "").strip()
+    if name:
+        conn.execute("UPDATE teams SET name = ? WHERE id = ?", (name, team_id))
+        conn.commit()
+        flash("Team renamed.", "success")
+    conn.close()
+    return redirect(url_for("admin.teams"))
+
+
+@bp.route("/teams/<int:team_id>/delete", methods=["POST"])
+@admin_required
+def delete_team(team_id):
+    conn = get_db()
+    default = default_team_id(conn)
+    if team_id == default:
+        conn.close()
+        flash("The default Ministry Team can't be deleted.", "warning")
+        return redirect(url_for("admin.teams"))
+    # Move members to the default team, then remove the team.
+    conn.execute("UPDATE users SET team_id = ? WHERE team_id = ?", (default, team_id))
+    conn.execute("DELETE FROM teams WHERE id = ?", (team_id,))
+    conn.commit()
+    conn.close()
+    flash("Team deleted; its members moved to the Ministry Team.", "info")
+    return redirect(url_for("admin.teams"))
+
+
 @bp.route("/users/<int:user_id>/flags", methods=["POST"])
 @admin_required
 def update_user_flags(user_id):
@@ -344,6 +418,14 @@ def update_user_flags(user_id):
         notify(conn, user_id, "Your administrator access was removed.",
                url_for("user.dashboard"))
         flash("Administrator rights revoked.", "info")
+    elif action == "make_lead":
+        conn.execute("UPDATE users SET team_lead = 1 WHERE id = ?", (user_id,))
+        notify(conn, user_id, "You're now a team lead — you can manage your team.",
+               url_for("user.team"))
+        flash("User is now a team lead.", "success")
+    elif action == "remove_lead":
+        conn.execute("UPDATE users SET team_lead = 0 WHERE id = ?", (user_id,))
+        flash("Team lead role removed.", "info")
     elif action == "approve":
         conn.execute("UPDATE users SET approved = 1, is_active = 1 WHERE id = ?", (user_id,))
         notify(conn, user_id, "Your account has been approved — welcome aboard! 🎉",

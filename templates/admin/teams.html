@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Teams · Admin{% endblock %}
+{% block body %}
+<div class="page-head">
+  <div>
+    <h1>Teams</h1>
+    <p>Group members into teams. Team leads manage the members of their own team.</p>
+  </div>
+</div>
+
+<div class="grid grid-2">
+  <div>
+    {% for tv in team_view %}
+    <div class="card">
+      <div class="list-item" style="border:none;padding:0;">
+        <div>
+          <strong>{{ tv['t']['name'] }}</strong><br>
+          <span class="meta">{{ tv['members'] }} member{{ 's' if tv['members'] != 1 }}{% if tv['leads'] %} · Leads: {{ tv['leads']|join(', ') }}{% endif %}</span>
+        </div>
+      </div>
+      <details class="inline-edit" style="margin-top:10px;">
+        <summary>Rename / delete</summary>
+        <form method="post" action="{{ url_for('admin.rename_team', team_id=tv['t']['id']) }}">
+          <label>Name</label>
+          <input type="text" name="name" value="{{ tv['t']['name'] }}" required>
+          <button class="btn btn-sm" style="margin-top:10px;">Save</button>
+        </form>
+        {% if tv['t']['name'] != 'Ministry Team' %}
+        <form method="post" action="{{ url_for('admin.delete_team', team_id=tv['t']['id']) }}" onsubmit="return confirm('Delete this team? Members move to the Ministry Team.');">
+          <button class="btn btn-sm btn-red" style="margin-top:8px;">Delete team</button>
+        </form>
+        {% endif %}
+      </details>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="card" style="align-self:start;">
+    <h3>+ New team</h3>
+    <form method="post">
+      <label for="name">Team name</label>
+      <input type="text" id="name" name="name" placeholder="e.g. Sunday AV Team" required>
+      <button class="btn" style="margin-top:14px;">Create team</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

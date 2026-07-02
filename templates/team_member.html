@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}{{ u['name'] }} · My Team{% endblock %}
+{% block body %}
+<div class="page-head">
+  <div>
+    <h1>{{ u['name'] }}</h1>
+    <p>@{{ u['username'] }} · {{ u['email'] }}</p>
+  </div>
+  <a href="{{ url_for('user.team') }}" class="btn btn-ghost">← My team</a>
+</div>
+
+<div class="card">
+  <h3>🔑 Reset password</h3>
+  <p class="muted" style="font-size:13px;margin-top:0;">Sets a temporary password; the member
+    must choose a new one at their next sign-in.</p>
+  <form method="post" action="{{ url_for('user.team_member_reset_password', user_id=u['id']) }}"
+        onsubmit="return confirm('Reset this member\'s password?');">
+    <label>Temporary password <span class="muted">(leave blank to auto-generate)</span></label>
+    <input type="text" name="temp_password" placeholder="auto-generate if empty">
+    <button class="btn btn-sm btn-amber" style="margin-top:12px;">Reset password</button>
+  </form>
+</div>
+
+<div class="grid grid-2">
+  <div class="card">
+    <h3>🎛️ Roles</h3>
+    <p class="muted" style="font-size:13px;">Assigning a role auto-queues its required training.</p>
+    {% for rv in role_view %}
+    <div class="list-item">
+      <div>
+        <strong>{{ rv['role']['name'] }}</strong>
+        {% if rv['assigned'] %}
+          {% if rv['qualified'] %}<span class="badge badge-green">Qualified</span>
+          {% else %}<span class="badge badge-amber">Training {{ rv['completed'] }}/{{ rv['required'] }}</span>{% endif %}
+        {% endif %}
+      </div>
+      <form method="post" action="{{ url_for('user.team_member_roles', user_id=u['id']) }}" class="inline-form">
+        <input type="hidden" name="role_id" value="{{ rv['role']['id'] }}">
+        {% if rv['assigned'] %}
+          <input type="hidden" name="action" value="remove"><button class="btn btn-sm btn-ghost">Remove</button>
+        {% else %}
+          <input type="hidden" name="action" value="assign"><button class="btn btn-sm">Assign</button>
+        {% endif %}
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="card">
+    <h3>🎓 Training</h3>
+    {% for tv in training_view %}
+    <div class="list-item">
+      <div>
+        <strong>{{ tv['t']['title'] }}</strong>
+        {% if tv['t']['role_name'] %}<span class="badge badge-gray">{{ tv['t']['role_name'] }}</span>{% endif %}<br>
+        {% if tv['assigned'] %}
+          {% if tv['status'] == 'completed' %}<span class="badge badge-green">Completed</span>
+          {% else %}<span class="badge badge-amber">Assigned</span>{% endif %}
+        {% else %}<span class="meta">Not assigned</span>{% endif %}
+      </div>
+      <form method="post" action="{{ url_for('user.team_member_training', user_id=u['id']) }}" class="row-actions">
+        <input type="hidden" name="training_id" value="{{ tv['t']['id'] }}">
+        {% if not tv['assigned'] %}
+          <button class="btn btn-sm" name="action" value="assign">Assign</button>
+        {% elif tv['status'] != 'completed' %}
+          <button class="btn btn-sm btn-green" name="action" value="complete">Mark done</button>
+          <button class="btn btn-sm btn-ghost" name="action" value="remove">Remove</button>
+        {% else %}
+          <button class="btn btn-sm btn-ghost" name="action" value="reset">Reset</button>
+        {% endif %}
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

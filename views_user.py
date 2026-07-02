@@ -3,6 +3,7 @@
 from datetime import date, timedelta
 
 import os
+import secrets
 
 from flask import (
     Blueprint, render_template, request, redirect, url_for, flash,
@@ -15,7 +16,7 @@ from db import get_db, now_iso
 from helpers import (
     login_required, current_user, role_training_status, is_qualified, parse_video,
     save_avatar, delete_avatar, avatars_dir, get_announcements, get_polls, poll_is_open,
-    build_ics, build_ics_feed,
+    build_ics, build_ics_feed, lead_or_admin_required, can_manage_member, notify,
 )
 
 bp = Blueprint("user", __name__)
@@ -894,3 +895,152 @@ def change_password():
         return redirect(url_for("admin.dashboard" if user["is_admin"] else "user.dashboard"))
 
     return render_template("change_password.html", forced=forced)
+
+
+# ---------------------------------------------------------------- team leads
+@bp.route("/team")
+@lead_or_admin_required
+def team():
+    """Team leads (and admins) see the members of their team and can manage them."""
+    user = current_user()
+    conn = get_db()
+    team = conn.execute("SELECT * FROM teams WHERE id = ?", (user["team_id"],)).fetchone()
+    members = conn.execute(
+        "SELECT * FROM users WHERE team_id = ? ORDER BY team_lead DESC, is_admin DESC, name",
+        (user["team_id"],),
+    ).fetchall()
+    view = []
+    for m in members:
+        roles = conn.execute(
+            "SELECT COUNT(*) AS c FROM user_roles WHERE user_id = ?", (m["id"],)
+        ).fetchone()["c"]
+        view.append({"u": m, "roles": roles, "manage": can_manage_member(user, m)})
+    conn.close()
+    return render_template("team.html", team=team, members=view)
+
+
+def _member_or_403(actor, user_id, conn):
+    m = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+    if m is None or not can_manage_member(actor, m):
+        conn.close()
+        abort(403)
+    return m
+
+
+@bp.route("/team/members/<int:user_id>")
+@lead_or_admin_required
+def team_member(user_id):
+    actor = current_user()
+    conn = get_db()
+    m = _member_or_403(actor, user_id, conn)
+    all_roles = conn.execute("SELECT * FROM roles ORDER BY name").fetchall()
+    assigned = {r["role_id"] for r in conn.execute(
+        "SELECT role_id FROM user_roles WHERE user_id = ?", (user_id,)).fetchall()}
+    role_view = []
+    for r in all_roles:
+        if r["id"] in assigned:
+            req, done = role_training_status(conn, user_id, r["id"])
+            role_view.append({"role": r, "assigned": True, "required": req,
+                              "completed": done, "qualified": done >= req})
+        else:
+            role_view.append({"role": r, "assigned": False})
+    all_tr = conn.execute(
+        "SELECT t.*, r.name AS role_name FROM trainings t"
+        " LEFT JOIN roles r ON r.id = t.role_id ORDER BY t.title").fetchall()
+    ut = {x["training_id"]: x for x in conn.execute(
+        "SELECT * FROM user_training WHERE user_id = ?", (user_id,)).fetchall()}
+    training_view = [{"t": t, "assigned": t["id"] in ut,
+                      "status": ut[t["id"]]["status"] if t["id"] in ut else None}
+                     for t in all_tr]
+    conn.close()
+    return render_template("team_member.html", u=m, role_view=role_view,
+                           training_view=training_view)
+
+
+@bp.route("/team/members/<int:user_id>/roles", methods=["POST"])
+@lead_or_admin_required
+def team_member_roles(user_id):
+    actor = current_user()
+    conn = get_db()
+    _member_or_403(actor, user_id, conn)
+    role_id = int(request.form.get("role_id"))
+    action = request.form.get("action")
+    role = conn.execute("SELECT name FROM roles WHERE id = ?", (role_id,)).fetchone()
+    rn = role["name"] if role else "a role"
+    if action == "assign":
+        conn.execute("INSERT OR IGNORE INTO user_roles (user_id, role_id, assigned_at)"
+                     " VALUES (?, ?, ?)", (user_id, role_id, now_iso()))
+        for t in conn.execute("SELECT id FROM trainings WHERE role_id = ? AND required = 1",
+                              (role_id,)).fetchall():
+            conn.execute("INSERT OR IGNORE INTO user_training (user_id, training_id, status,"
+                         " assigned_at) VALUES (?, ?, 'assigned', ?)",
+                         (user_id, t["id"], now_iso()))
+        notify(conn, user_id, f"You were assigned the {rn} role.", url_for("user.profile"))
+        flash("Role assigned and required training queued.", "success")
+    elif action == "remove":
+        conn.execute("DELETE FROM user_roles WHERE user_id = ? AND role_id = ?",
+                     (user_id, role_id))
+        notify(conn, user_id, f"The {rn} role was removed from your account.",
+               url_for("user.profile"))
+        flash("Role removed.", "info")
+    conn.commit()
+    conn.close()
+    return redirect(url_for("user.team_member", user_id=user_id))
+
+
+@bp.route("/team/members/<int:user_id>/training", methods=["POST"])
+@lead_or_admin_required
+def team_member_training(user_id):
+    actor = current_user()
+    conn = get_db()
+    _member_or_403(actor, user_id, conn)
+    training_id = int(request.form.get("training_id"))
+    action = request.form.get("action")
+    tr = conn.execute("SELECT title FROM trainings WHERE id = ?", (training_id,)).fetchone()
+    tt = tr["title"] if tr else "a training"
+    if action == "assign":
+        conn.execute("INSERT OR IGNORE INTO user_training (user_id, training_id, status,"
+                     " assigned_at) VALUES (?, ?, 'assigned', ?)",
+                     (user_id, training_id, now_iso()))
+        notify(conn, user_id, f"New training assigned: {tt}.", url_for("user.trainings"))
+        flash("Training assigned.", "success")
+    elif action == "complete":
+        conn.execute("UPDATE user_training SET status = 'completed', completed_at = ?"
+                     " WHERE user_id = ? AND training_id = ?", (now_iso(), user_id, training_id))
+        notify(conn, user_id, f"Your “{tt}” training was marked complete.",
+               url_for("user.trainings"))
+        flash("Training marked complete.", "success")
+    elif action == "reset":
+        conn.execute("UPDATE user_training SET status = 'assigned', completed_at = NULL"
+                     " WHERE user_id = ? AND training_id = ?", (user_id, training_id))
+        flash("Training reset to incomplete.", "info")
+    elif action == "remove":
+        conn.execute("DELETE FROM user_training WHERE user_id = ? AND training_id = ?",
+                     (user_id, training_id))
+        flash("Training unassigned.", "info")
+    conn.commit()
+    conn.close()
+    return redirect(url_for("user.team_member", user_id=user_id))
+
+
+@bp.route("/team/members/<int:user_id>/reset-password", methods=["POST"])
+@lead_or_admin_required
+def team_member_reset_password(user_id):
+    actor = current_user()
+    conn = get_db()
+    m = _member_or_403(actor, user_id, conn)
+    temp = request.form.get("temp_password", "").strip() or secrets.token_urlsafe(6)
+    if len(temp) < 6:
+        conn.close()
+        flash("Temporary password must be at least 6 characters.", "danger")
+        return redirect(url_for("user.team_member", user_id=user_id))
+    conn.execute("UPDATE users SET password_hash = ?, must_change_password = 1 WHERE id = ?",
+                 (generate_password_hash(temp, method="pbkdf2:sha256"), user_id))
+    notify(conn, user_id, "Your team lead reset your password. You'll be asked to set a new "
+           "one at your next sign-in.", url_for("user.dashboard"),
+           email=True, subject="Your HVGC LINEUP password was reset")
+    conn.commit()
+    conn.close()
+    flash(f"Password reset for {m['name']}. Temporary password: {temp} — they'll be asked "
+          "to change it at next sign-in.", "success")
+    return redirect(url_for("user.team_member", user_id=user_id))

@@ -15,7 +15,7 @@ from flask import (
 )
 from werkzeug.security import generate_password_hash, check_password_hash
 
-from db import get_db, now_iso, execute_returning_id
+from db import get_db, now_iso, execute_returning_id, default_team_id
 from helpers import send_email
 
 bp = Blueprint("auth", __name__)
@@ -88,8 +88,8 @@ def register():
         new_id = execute_returning_id(
             conn,
             "INSERT INTO users (name, username, email, phone, password_hash, is_admin,"
-            " is_active, email_verified, verify_token, approved, created_at)"
-            " VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)",
+            " is_active, email_verified, verify_token, approved, team_id, created_at)"
+            " VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?)",
             (
                 name, username, email, phone,
                 generate_password_hash(password, method="pbkdf2:sha256"),
@@ -97,6 +97,7 @@ def register():
                 1 if bootstrap else 0,   # email_verified
                 token,
                 1 if bootstrap else 0,   # approved
+                default_team_id(conn),
                 now_iso(),
             ),
         )

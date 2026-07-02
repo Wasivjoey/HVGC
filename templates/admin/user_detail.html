@@ -64,6 +64,31 @@
   {% endif %}
 </div>
 
+<div class="card">
+  <h3>👥 Team &amp; tier</h3>
+  <div class="row-actions" style="margin-bottom:6px;">
+    {% if u['team_lead'] %}<span class="badge badge-amber">Team Lead</span>{% endif %}
+  </div>
+  <form method="post" action="{{ url_for('admin.set_user_team', user_id=u['id']) }}" class="form-row" style="align-items:flex-end;">
+    <div>
+      <label>Team</label>
+      <select name="team_id">
+        {% for t in teams %}
+        <option value="{{ t['id'] }}" {{ 'selected' if t['id'] == u['team_id'] }}>{{ t['name'] }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button class="btn btn-sm">Save team</button>
+  </form>
+  <div class="divider"></div>
+  <p class="muted" style="font-size:13px;margin-top:0;">A team lead can manage the members of
+    their own team (assign roles &amp; training, reset passwords).</p>
+  <form method="post" action="{{ url_for('admin.update_user_flags', user_id=u['id']) }}" class="inline-form">
+    <input type="hidden" name="action" value="{{ 'remove_lead' if u['team_lead'] else 'make_lead' }}">
+    <button class="btn btn-sm {{ 'btn-ghost' if u['team_lead'] else 'btn-amber' }}">{{ 'Remove team-lead role' if u['team_lead'] else 'Make team lead' }}</button>
+  </form>
+</div>
+
 <div class="grid grid-2">
   <div class="card">
     <h3>✏️ Edit account details</h3>

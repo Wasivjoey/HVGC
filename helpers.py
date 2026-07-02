@@ -285,6 +285,32 @@ def admin_required(view):
     return wrapped
 
 
+def lead_or_admin_required(view):
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        user = current_user()
+        if user is None:
+            flash("Please sign in to continue.", "warning")
+            return redirect(url_for("auth.login"))
+        if not (user["is_admin"] or user["team_lead"]):
+            flash("That area is for team leads and administrators.", "danger")
+            return redirect(url_for("user.dashboard"))
+        return view(*args, **kwargs)
+
+    return wrapped
+
+
+def can_manage_member(actor, target):
+    """Whether ``actor`` may manage ``target``: admins manage anyone; team leads
+    manage non-admin members of their own team."""
+    if not actor or not target:
+        return False
+    if actor["is_admin"]:
+        return True
+    return bool(actor["team_lead"]) and target["team_id"] == actor["team_id"] \
+        and not target["is_admin"]
+
+
 def role_training_status(conn, user_id, role_id):
     """Return (required_count, completed_count) of required trainings for a role.
 
