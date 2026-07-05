@@ -285,6 +285,17 @@ def admin_required(view):
     return wrapped
 
 
+_TEAM_PALETTE = ["#2f80d8", "#2f9e54", "#8a5cd8", "#d9822b", "#159e8e",
+                 "#c2479b", "#5b6cff", "#b0613c", "#6f8a3a", "#c79a2e"]
+
+
+def team_color(team_id):
+    """A stable colour for a team, so each ministry team is visually distinct."""
+    if not team_id:
+        return "#8a93a5"
+    return _TEAM_PALETTE[int(team_id) % len(_TEAM_PALETTE)]
+
+
 def lead_or_admin_required(view):
     @wraps(view)
     def wrapped(*args, **kwargs):
@@ -514,3 +525,234 @@ def qualified_users_for_role(conn, role_id):
         (role_id,),
     ).fetchall()
     return [u for u in candidates if is_qualified(conn, u["id"], role_id)]
+
+
+def notify_assignment(conn, service_id, user_id, role_id):
+    """Notify a freshly-assigned user (in-app + email with an .ics invite).
+
+    Shared by the manual assign flow and the auto-scheduler so both send the
+    same calendar invite and reminders. Caller commits.
+    """
+    svc = conn.execute(
+        "SELECT title, service_date, start_time, location, notes FROM services WHERE id = ?",
+        (service_id,),
+    ).fetchone()
+    role = conn.execute("SELECT name FROM roles WHERE id = ?", (role_id,)).fetchone()
+    if not (svc and role):
+        return
+    assignment = conn.execute(
+        "SELECT id FROM assignments WHERE service_id = ? AND user_id = ? AND role_id = ?",
+        (service_id, user_id, role_id),
+    ).fetchone()
+    if not assignment:
+        return
+    desc = f"You're serving as {role['name']} for {svc['title']}."
+    if svc["notes"]:
+        desc += "\n\n" + svc["notes"]
+    ics = build_ics(f"assignment-{assignment['id']}@hvgc-lineup",
+                    f"AV Team: {role['name']} — {svc['title']}",
+                    svc["service_date"], svc["start_time"], svc["location"], desc)
+    cal_link = url_for("user.service_calendar", service_id=service_id, _external=True)
+    notify(conn, user_id,
+           f"You're scheduled as {role['name']} for {svc['title']} on "
+           f"{svc['service_date']}.", url_for("user.service_detail", service_id=service_id),
+           email=True, subject="You've been scheduled — HVGC LINEUP",
+           attachments=[("hvgc-service.ics", ics, "text", "calendar")],
+           email_extra=("📅 Add this to your calendar — the attached invite includes "
+                        f"reminders the day before and an hour before.\nCalendar link: {cal_link}"))
+
+
+# --------------------------------------------------------------- auto-scheduler
+
+# Ranking of a candidate's availability on the service day. Lower is better;
+# people who explicitly marked themselves available are preferred over those
+# who simply haven't said anything. "unavailable" people are excluded outright.
+_AVAIL_RANK = {"available": 0, None: 1}
+
+
+def gather_role_candidates(conn, service, role_ids, exclude_user_ids=None):
+    """Build the eligible-candidate pool the auto-scheduler chooses from.
+
+    Returns ``{role_id: [candidate, ...]}`` where each candidate is a dict of
+    plain facts: ``id, name, availability, note, load``. Only people who are
+    *qualified* (hold the role and finished its required training) and *not
+    marked unavailable* on the service date are included, so the hard rules —
+    trained and available — are enforced before any AI ever sees the data.
+    """
+    exclude = set(exclude_user_ids or ())
+    avail_map = {
+        a["user_id"]: a for a in conn.execute(
+            "SELECT user_id, status, note FROM availability WHERE day = ?",
+            (service["service_date"],),
+        ).fetchall()
+    }
+    # Fairness signal: how many assignments each person already holds overall.
+    load_map = {
+        row["user_id"]: row["c"] for row in conn.execute(
+            "SELECT user_id, COUNT(*) AS c FROM assignments GROUP BY user_id"
+        ).fetchall()
+    }
+    pool = {}
+    for role_id in role_ids:
+        cands = []
+        for u in qualified_users_for_role(conn, role_id):
+            if u["id"] in exclude:
+                continue
+            av = avail_map.get(u["id"])
+            status = av["status"] if av else None
+            if status == "unavailable":
+                continue
+            cands.append({
+                "id": u["id"], "name": u["name"], "availability": status,
+                "note": (av["note"] if av else None),
+                "load": load_map.get(u["id"], 0),
+            })
+        pool[role_id] = cands
+    return pool
+
+
+def _candidate_sort_key(c):
+    return (_AVAIL_RANK.get(c["availability"], 1), c["load"], c["name"].lower())
+
+
+def _rules_pick(pool, role_names):
+    """Greedy deterministic assignment. Fills the most-constrained roles first
+    (fewest eligible people) so scarce specialists aren't used up on easy roles.
+    Returns ``{role_id: user_id}``."""
+    chosen = {}
+    used = set()
+    order = sorted(pool.keys(), key=lambda rid: (len(pool[rid]), role_names.get(rid, "")))
+    for role_id in order:
+        for c in sorted(pool[role_id], key=_candidate_sort_key):
+            if c["id"] not in used:
+                chosen[role_id] = c["id"]
+                used.add(c["id"])
+                break
+    return chosen
+
+
+def _ai_pick(service, pool, role_names):
+    """Ask Claude to choose the roster from the pre-filtered pool.
+
+    Returns ``{role_id: user_id}`` on success, or ``None`` on any failure so the
+    caller can fall back to the deterministic rules engine. The AI only ever
+    picks from the supplied (already trained + available) candidates.
+    """
+    import json
+    import urllib.request
+
+    cfg = current_app.config
+    api_key = cfg.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        return None
+
+    roles_payload = []
+    for role_id, cands in pool.items():
+        roles_payload.append({
+            "role_id": role_id,
+            "role_name": role_names.get(role_id, str(role_id)),
+            "candidates": [
+                {"user_id": c["id"], "name": c["name"],
+                 "availability": c["availability"] or "not marked",
+                 "current_load": c["load"],
+                 "note": c["note"] or ""}
+                for c in cands
+            ],
+        })
+    instructions = (
+        "You are scheduling volunteers for a church service. For each role, pick "
+        "exactly one user_id from that role's candidate list, or leave it unfilled "
+        "if that is the only way to avoid a conflict. Hard rules: (1) never assign "
+        "the same person to more than one role; (2) only choose a user_id that "
+        "appears in that role's candidate list; (3) prefer people whose availability "
+        "is 'available' over 'not marked'; (4) balance the load — favour people with "
+        "a lower current_load so serving is shared fairly. Respond with ONLY a JSON "
+        "object of the form {\"assignments\": [{\"role_id\": <int>, \"user_id\": <int>}], "
+        "\"unfilled\": [<role_id>, ...]}. No prose."
+    )
+    payload = {
+        "service": {"title": service["title"], "date": service["service_date"],
+                    "start_time": service["start_time"], "location": service["location"]},
+        "roles": roles_payload,
+    }
+    body = json.dumps({
+        "model": cfg.get("AUTOSCHEDULE_MODEL", "claude-sonnet-5"),
+        "max_tokens": 1024,
+        "messages": [{"role": "user",
+                      "content": instructions + "\n\nDATA:\n" + json.dumps(payload)}],
+    }).encode("utf-8")
+    req = urllib.request.Request(
+        "https://api.anthropic.com/v1/messages", data=body,
+        headers={"x-api-key": api_key, "anthropic-version": "2023-06-01",
+                 "content-type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=40) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+        text = "".join(block.get("text", "") for block in data.get("content", [])
+                       if block.get("type") == "text").strip()
+        start, end = text.find("{"), text.rfind("}")
+        if start == -1 or end == -1:
+            return None
+        parsed = json.loads(text[start:end + 1])
+    except Exception as exc:  # network, auth, quota, malformed JSON — fall back
+        current_app.logger.warning("AI auto-schedule failed, using rules: %s", exc)
+        return None
+
+    # Validate every pick against the pool; drop anything invalid or duplicated.
+    valid_ids = {rid: {c["id"] for c in cands} for rid, cands in pool.items()}
+    chosen = {}
+    used = set()
+    for item in parsed.get("assignments", []):
+        try:
+            role_id = int(item["role_id"])
+            user_id = int(item["user_id"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if role_id in valid_ids and user_id in valid_ids[role_id] and user_id not in used:
+            chosen[role_id] = user_id
+            used.add(user_id)
+    return chosen
+
+
+def auto_schedule_plan(conn, service, role_ids, use_ai=False):
+    """Produce a proposed roster for ``service`` covering ``role_ids``.
+
+    Returns ``(assignments, unfilled, method)`` where ``assignments`` is a list
+    of ``(role_id, user_id)`` pairs, ``unfilled`` is the role_ids no eligible
+    person could be found for, and ``method`` is 'ai' or 'rules'. People already
+    assigned to this service are excluded so we never double-book. The AI path
+    only runs when requested *and* a key is configured, and silently falls back
+    to the rules engine on any error.
+    """
+    already = {
+        row["user_id"] for row in conn.execute(
+            "SELECT user_id FROM assignments WHERE service_id = ?", (service["id"],)
+        ).fetchall()
+    }
+    role_names = {
+        r["id"]: r["name"] for r in conn.execute(
+            "SELECT id, name FROM roles"
+        ).fetchall()
+    }
+    pool = gather_role_candidates(conn, service, role_ids, exclude_user_ids=already)
+
+    chosen = None
+    method = "rules"
+    if use_ai and current_app.config.get("AI_SCHEDULING_ENABLED"):
+        chosen = _ai_pick(service, pool, role_names)
+        if chosen is not None:
+            method = "ai"
+    if chosen is None:
+        chosen = _rules_pick(pool, role_names)
+    else:
+        # The AI may leave roles unfilled; top them up with the rules engine so
+        # we still fill everything we can, without reusing people it already chose.
+        remaining = {rid: [c for c in pool[rid] if c["id"] not in set(chosen.values())]
+                     for rid in role_ids if rid not in chosen}
+        chosen.update(_rules_pick(remaining, role_names))
+
+    assignments = [(rid, chosen[rid]) for rid in role_ids if rid in chosen]
+    unfilled = [rid for rid in role_ids if rid not in chosen]
+    return assignments, unfilled, method

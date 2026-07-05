@@ -29,6 +29,40 @@
   {% endif %}
 </div>
 
+<div class="card auto-card">
+  <details {{ 'open' if roster|length == 0 }}>
+    <summary><h3 style="display:inline;">⚡ Auto-schedule <span class="badge badge-gray">optional</span></h3></summary>
+    <p class="muted" style="font-size:13px;margin-top:8px;">
+      Tick the roles needed for this day and generate a roster automatically. Only
+      people who are <strong>trained</strong> for the role and <strong>not marked
+      unavailable</strong> on {{ service['service_date']|pretty_date }} are considered,
+      and the load is shared fairly. You can adjust anything afterwards.
+    </p>
+    <form method="post" action="{{ url_for('admin.auto_schedule', service_id=service['id']) }}">
+      <div class="role-check-grid">
+        {% for r in roles %}
+        <label class="role-check">
+          <input type="checkbox" name="needed_roles" value="{{ r['id'] }}"
+                 {{ 'checked' if r['id'] in assigned_role_ids }}>
+          <span>{{ r['name'] }}{% if r['team_name'] %} <span class="badge badge-gray">{{ r['team_name'] }}</span>{% endif %}</span>
+        </label>
+        {% endfor %}
+      </div>
+      <div class="row-actions" style="margin-top:12px;align-items:center;gap:14px;">
+        {% if ai_enabled %}
+        <label class="role-check" style="margin:0;">
+          <input type="checkbox" name="use_ai" value="1" checked>
+          <span>Use AI assistant (smart balancing)</span>
+        </label>
+        {% else %}
+        <span class="muted" style="font-size:12px;">AI assistant off — set <code>ANTHROPIC_API_KEY</code> to enable. Rules engine will be used.</span>
+        {% endif %}
+        <button class="btn btn-green">Generate schedule</button>
+      </div>
+    </form>
+  </details>
+</div>
+
 <h2>Assign by role</h2>
 <p class="muted" style="margin-top:-6px;">
   <span class="dot dot-green"></span> available &nbsp;

@@ -63,11 +63,23 @@ def create_app():
     app.config["SMTP_TLS"] = os.environ.get("SMTP_TLS", "1") != "0"
     app.config["EMAIL_ENABLED"] = bool(app.config["SMTP_HOST"])
 
+    # Optional AI auto-scheduler. The rules-based auto-scheduler always works;
+    # when an Anthropic API key is present the "AI assistant" option becomes
+    # available, using Claude to balance the roster more intelligently.
+    app.config["ANTHROPIC_API_KEY"] = os.environ.get("ANTHROPIC_API_KEY")
+    app.config["AUTOSCHEDULE_MODEL"] = os.environ.get(
+        "AUTOSCHEDULE_MODEL", "claude-sonnet-5"
+    )
+    app.config["AI_SCHEDULING_ENABLED"] = bool(app.config["ANTHROPIC_API_KEY"])
+
     init_db()
 
     app.register_blueprint(auth.bp)
     app.register_blueprint(views_user.bp)
     app.register_blueprint(views_admin.bp)
+
+    from helpers import team_color
+    app.jinja_env.globals["team_color"] = team_color
 
     @app.context_processor
     def inject_user():

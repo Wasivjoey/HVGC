@@ -51,6 +51,16 @@ services:
       # - key: SMTP_FROM
       #   value: no-reply@yourchurch.org
 
+      # ---- Optional AI auto-scheduler ----
+      # Set an Anthropic API key to enable the "Use AI assistant" option when
+      # generating a service roster. Without it the rules-based auto-scheduler
+      # is used (always available). Outbound HTTPS to api.anthropic.com works on
+      # all Render plans (it's port 443, not a blocked SMTP port).
+      # - key: ANTHROPIC_API_KEY
+      #   sync: false        # set as a secret in the dashboard
+      # - key: AUTOSCHEDULE_MODEL
+      #   value: claude-sonnet-5
+
     # ---- Optional persistent disk for uploaded files (paid plans only) ----
     # Uncomment this AND the UPLOAD_PATH env var above to keep uploaded
     # documents/avatars across deploys. mountPath must be the parent of UPLOAD_PATH.

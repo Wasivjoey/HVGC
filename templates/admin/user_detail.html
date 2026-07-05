@@ -67,6 +67,7 @@
 <div class="card">
   <h3>👥 Team &amp; tier</h3>
   <div class="row-actions" style="margin-bottom:6px;">
+    {% for t in teams %}{% if t['id'] == u['team_id'] %}<span class="team-pill" style="background:{{ team_color(t['id']) }}">{{ t['name'] }}</span>{% endif %}{% endfor %}
     {% if u['team_lead'] %}<span class="badge badge-amber">Team Lead</span>{% endif %}
   </div>
   <form method="post" action="{{ url_for('admin.set_user_team', user_id=u['id']) }}" class="form-row" style="align-items:flex-end;">

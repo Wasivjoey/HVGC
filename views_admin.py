@@ -15,7 +15,7 @@ from helpers import (
     admin_required, current_user, role_training_status, is_qualified,
     qualified_users_for_role, save_document, delete_document,
     get_announcements, get_polls, notify, notify_all, assignment_conflicts,
-    build_ics, delete_avatar,
+    build_ics, delete_avatar, notify_assignment, auto_schedule_plan,
 )
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
@@ -781,7 +781,10 @@ def schedule(service_id):
             (service["service_date"],),
         ).fetchall()
     }
-    roles = conn.execute("SELECT * FROM roles ORDER BY name").fetchall()
+    roles = conn.execute(
+        "SELECT r.*, t.name AS team_name FROM roles r"
+        " LEFT JOIN teams t ON t.id = r.team_id ORDER BY r.name"
+    ).fetchall()
     role_board = []
     for r in roles:
         candidates = conn.execute(
@@ -803,9 +806,15 @@ def schedule(service_id):
             })
         role_board.append({"role": r, "candidates": cand_view})
 
+    # Roles already needed (have at least one candidate) are pre-ticked in the
+    # auto-schedule picker; roles already fully staffed here are still offered.
+    assigned_role_ids = {a["role_id"] for a in roster}
     conn.close()
+    from flask import current_app
     return render_template(
         "admin/schedule.html", service=service, roster=roster, role_board=role_board,
+        roles=roles, assigned_role_ids=assigned_role_ids,
+        ai_enabled=current_app.config.get("AI_SCHEDULING_ENABLED", False),
     )
 
 
@@ -840,31 +849,7 @@ def assign(service_id):
         " VALUES (?, ?, ?, 'scheduled', ?)",
         (service_id, user_id, role_id, now_iso()),
     )
-    svc = conn.execute(
-        "SELECT title, service_date, start_time, location, notes FROM services WHERE id = ?",
-        (service_id,),
-    ).fetchone()
-    role = conn.execute("SELECT name FROM roles WHERE id = ?", (role_id,)).fetchone()
-    if svc and role:
-        assignment = conn.execute(
-            "SELECT id FROM assignments WHERE service_id = ? AND user_id = ? AND role_id = ?",
-            (service_id, user_id, role_id),
-        ).fetchone()
-        # Build a calendar invite (.ics) with reminders to attach to the email.
-        desc = f"You're serving as {role['name']} for {svc['title']}."
-        if svc["notes"]:
-            desc += "\n\n" + svc["notes"]
-        ics = build_ics(f"assignment-{assignment['id']}@hvgc-lineup",
-                        f"AV Team: {role['name']} — {svc['title']}",
-                        svc["service_date"], svc["start_time"], svc["location"], desc)
-        cal_link = url_for("user.service_calendar", service_id=service_id, _external=True)
-        notify(conn, user_id,
-               f"You're scheduled as {role['name']} for {svc['title']} on "
-               f"{svc['service_date']}.", url_for("user.service_detail", service_id=service_id),
-               email=True, subject="You've been scheduled — HVGC LINEUP",
-               attachments=[("hvgc-service.ics", ics, "text", "calendar")],
-               email_extra=("📅 Add this to your calendar — the attached invite includes "
-                            f"reminders the day before and an hour before.\nCalendar link: {cal_link}"))
+    notify_assignment(conn, service_id, user_id, role_id)
     conn.commit()
     conn.close()
     flash("Assigned.", "success")
@@ -894,6 +879,56 @@ def unassign(assignment_id):
     if service_id:
         return redirect(url_for("admin.schedule", service_id=service_id))
     return redirect(url_for("admin.services"))
+
+
+@bp.route("/services/<int:service_id>/auto-schedule", methods=["POST"])
+@admin_required
+def auto_schedule(service_id):
+    """Optionally auto-fill the roster. The admin ticks the roles needed for the
+    day; we assign a qualified, available person to each, balancing the load.
+    Uses the AI assistant when requested and configured, else a rules engine."""
+    conn = get_db()
+    service = conn.execute("SELECT * FROM services WHERE id = ?", (service_id,)).fetchone()
+    if service is None:
+        conn.close()
+        flash("Service not found.", "danger")
+        return redirect(url_for("admin.services"))
+
+    role_ids = [int(x) for x in request.form.getlist("needed_roles")]
+    use_ai = request.form.get("use_ai") == "1"
+    if not role_ids:
+        conn.close()
+        flash("Pick at least one role to generate a schedule for.", "warning")
+        return redirect(url_for("admin.schedule", service_id=service_id))
+
+    assignments, unfilled, method = auto_schedule_plan(conn, service, role_ids, use_ai=use_ai)
+
+    for role_id, user_id in assignments:
+        conn.execute(
+            "INSERT OR IGNORE INTO assignments (service_id, user_id, role_id, status, created_at)"
+            " VALUES (?, ?, ?, 'scheduled', ?)",
+            (service_id, user_id, role_id, now_iso()),
+        )
+        notify_assignment(conn, service_id, user_id, role_id)
+    conn.commit()
+
+    filled = len(assignments)
+    engine = "AI assistant" if method == "ai" else "rules"
+    if filled:
+        flash(f"Auto-schedule ({engine}) filled {filled} role"
+              f"{'s' if filled != 1 else ''}.", "success")
+    if unfilled:
+        names = conn.execute(
+            "SELECT name FROM roles WHERE id IN (%s)"
+            % ",".join("?" for _ in unfilled), unfilled,
+        ).fetchall()
+        label = ", ".join(n["name"] for n in names)
+        flash(f"No qualified, available person found for: {label}. "
+              "Assign these manually or mark more people available.", "warning")
+    if not filled and not unfilled:
+        flash("Nothing to do.", "info")
+    conn.close()
+    return redirect(url_for("admin.schedule", service_id=service_id))
 
 
 # ------------------------------------------------------------------------- swaps

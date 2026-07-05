@@ -14,7 +14,7 @@
     <div class="card">
       <div class="list-item" style="border:none;padding:0;">
         <div>
-          <strong>{{ tv['t']['name'] }}</strong><br>
+          <span class="team-swatch" style="background:{{ team_color(tv['t']['id']) }}"></span><strong>{{ tv['t']['name'] }}</strong><br>
           <span class="meta">{{ tv['members'] }} member{{ 's' if tv['members'] != 1 }}{% if tv['leads'] %} · Leads: {{ tv['leads']|join(', ') }}{% endif %}</span>
         </div>
       </div>

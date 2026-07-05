@@ -3,7 +3,7 @@
 {% block body %}
 <div class="page-head">
   <div>
-    <h1>{{ team['name'] if team else 'My Team' }}</h1>
+    <h1>{% if team %}<span class="team-swatch" style="background:{{ team_color(team['id']) }}"></span>{% endif %}{{ team['name'] if team else 'My Team' }}</h1>
     <p>Manage the members of your team — assign roles &amp; training, and reset passwords.</p>
   </div>
 </div>

@@ -3,6 +3,7 @@
 {% block body %}
 {# A stable per-person colour, keyed off the user id so it's the same everywhere #}
 {% set palette = ['#e0405a','#e07b2b','#c79a2e','#2f9e54','#159e8e','#2f80d8','#5b6cff','#8a5cd8','#c2479b','#6f8a3a','#2b96a8','#b0613c'] %}
+{% set by_team = request.args.get('by') == 'team' %}
 <div class="page-head">
   <div>
     <h1>Team Calendar</h1>
@@ -26,8 +27,20 @@
     </form>
     <a href="{{ url_for('user.calendar', month=this_month, team=team_filter) }}" class="btn btn-sm btn-ghost">Today</a>
     <a href="{{ url_for('user.calendar', month=next_month, team=team_filter) }}" class="btn btn-sm btn-ghost">Next ›</a>
+    <span class="seg">
+      <a href="{{ url_for('user.calendar', month=cur_ym, team=team_filter) }}" class="btn btn-sm {{ 'btn-ghost' if by_team else '' }}">By person</a>
+      <a href="{{ url_for('user.calendar', month=cur_ym, team=team_filter, by='team') }}" class="btn btn-sm {{ '' if by_team else 'btn-ghost' }}">By team</a>
+    </span>
   </div>
 </div>
+
+{% if by_team %}
+<div class="team-legend">
+  {% for t in teams %}
+  <span class="team-pill" style="background:{{ team_color(t['id']) }}">{{ t['name'] }}</span>
+  {% endfor %}
+</div>
+{% endif %}
 
 <div class="cal-scroll">
   <div class="cal-grid">
@@ -40,7 +53,7 @@
         <div class="cal-svc">
           <div class="cal-svc-title">{{ item['svc']['title'] }}{% if item['svc']['start_time'] %} · {{ item['svc']['start_time'] }}{% endif %}</div>
           {% for a in item['roster'] %}
-          {% set col = palette[a['user_id'] % palette|length] %}
+          {% set col = team_color(a['team_id']) if by_team else palette[a['user_id'] % palette|length] %}
           <div class="cal-role{{ ' me' if a['user_id'] == me_id }}" title="{{ a['user_name'] }} — {{ a['role_name'] }}">
             <span class="cal-dot" style="background:{{ col }};"></span><span class="cr-role">{{ a['role_name'] }}</span>
             <span class="cn" style="color:{{ col }};">{{ a['user_name'].split()[0] }}</span>
@@ -56,7 +69,7 @@
 </div>
 
 <p class="muted" style="font-size:13px;margin-top:12px;">
-  Each volunteer has their own colour, so you can follow a person across the month.
+  {% if by_team %}Names are coloured by ministry team — see the key above.{% else %}Each volunteer has their own colour, so you can follow a person across the month.{% endif %}
   Your own slots are <span class="cal-role me" style="display:inline-block;padding:1px 8px;">highlighted</span>.
 </p>
 {% endblock %}

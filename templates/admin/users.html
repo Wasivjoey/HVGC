@@ -38,7 +38,7 @@
           </div>
         </td>
         <td class="muted">{{ p['u']['email'] }}</td>
-        <td>{% if p['u']['team_name'] %}<span class="badge badge-blue">{{ p['u']['team_name'] }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+        <td>{% if p['u']['team_name'] %}<span class="team-pill" style="background:{{ team_color(p['u']['team_id']) }}">{{ p['u']['team_name'] }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
         <td><span class="badge badge-gray">{{ p['roles'] }} role{{ 's' if p['roles'] != 1 }}</span></td>
         <td>
           {% if p['u']['is_admin'] %}<span class="badge badge-blue">Admin</span>

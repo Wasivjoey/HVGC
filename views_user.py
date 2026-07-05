@@ -441,7 +441,7 @@ def calendar():
     for s in svc_rows:
         if team_filter:
             roster = conn.execute(
-                "SELECT r.name AS role_name, u.name AS user_name, a.user_id, a.status"
+                "SELECT r.name AS role_name, u.name AS user_name, a.user_id, a.status, u.team_id"
                 " FROM assignments a JOIN roles r ON r.id = a.role_id"
                 " JOIN users u ON u.id = a.user_id"
                 " WHERE a.service_id = ? AND u.team_id = ?"
@@ -450,7 +450,7 @@ def calendar():
             ).fetchall()
         else:
             roster = conn.execute(
-                "SELECT r.name AS role_name, u.name AS user_name, a.user_id, a.status"
+                "SELECT r.name AS role_name, u.name AS user_name, a.user_id, a.status, u.team_id"
                 " FROM assignments a JOIN roles r ON r.id = a.role_id"
                 " JOIN users u ON u.id = a.user_id WHERE a.service_id = ?"
                 " ORDER BY r.name, u.name",

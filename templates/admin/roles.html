@@ -15,7 +15,7 @@
       <div class="list-item" style="border:none;padding:0;">
         <div>
           <strong>{{ rv['r']['name'] }}</strong>
-          {% if rv['r']['team_name'] %}<span class="badge badge-blue">{{ rv['r']['team_name'] }}</span>{% else %}<span class="badge badge-gray">All teams</span>{% endif %}<br>
+          {% if rv['r']['team_name'] %}<span class="team-pill" style="background:{{ team_color(rv['r']['team_id']) }}">{{ rv['r']['team_name'] }}</span>{% else %}<span class="badge badge-gray">All teams</span>{% endif %}<br>
           <span class="meta">{{ rv['r']['description'] or '' }}</span>
         </div>
         <div class="pill-row">
