@@ -49,7 +49,8 @@ CREATE TABLE IF NOT EXISTS users (
     email_verified INTEGER NOT NULL DEFAULT 0,  -- has the user confirmed their email
     verify_token   TEXT,                        -- one-time email verification token
     approved       INTEGER NOT NULL DEFAULT 0,  -- has an admin approved this account
-    avatar         TEXT,
+    avatar         TEXT,                        -- marker filename; bytes live in avatar_data
+    avatar_data    BLOB,                        -- the JPEG bytes (survives redeploys)
     reset_token    TEXT,                        -- one-time password reset token
     reset_expires  TEXT,                        -- ISO expiry for the reset token
     must_change_password INTEGER NOT NULL DEFAULT 0,  -- force a change at next login
@@ -104,8 +105,9 @@ CREATE TABLE IF NOT EXISTS services (
     start_time   TEXT,               -- HH:MM
     location     TEXT,
     notes        TEXT,
-    doc_filename TEXT,               -- stored programme-flow file name on disk
+    doc_filename TEXT,               -- marker name; bytes live in doc_data
     doc_original TEXT,               -- original upload name shown to users
+    doc_data     BLOB,               -- the document bytes (survives redeploys)
     created_at   TEXT NOT NULL
 );
 
@@ -230,7 +232,9 @@ class _PGConn:
 
     def executescript(self, sql):
         cur = self.raw.cursor()
-        cur.execute(sql.replace("INTEGER PRIMARY KEY AUTOINCREMENT", "SERIAL PRIMARY KEY"))
+        sql = sql.replace("INTEGER PRIMARY KEY AUTOINCREMENT", "SERIAL PRIMARY KEY")
+        sql = sql.replace(" BLOB", " BYTEA")  # Postgres binary column type
+        cur.execute(sql)
         cur.close()
 
     def commit(self):
@@ -260,6 +264,29 @@ def execute_returning_id(conn, sql, params=()):
 
 def now_iso():
     return datetime.utcnow().isoformat(timespec="seconds")
+
+
+def blob_sql_type():
+    """The binary column type for the active backend (for ALTER TABLE)."""
+    return "BYTEA" if USE_PG else "BLOB"
+
+
+def to_binary(data):
+    """Adapt Python bytes for a binary column parameter on either backend."""
+    if data is None:
+        return None
+    if USE_PG:
+        return psycopg2.Binary(data)
+    return sqlite3.Binary(data)
+
+
+def from_binary(value):
+    """Normalise a binary column value read back into plain bytes."""
+    if value is None:
+        return None
+    if isinstance(value, memoryview):
+        return value.tobytes()
+    return bytes(value)
 
 
 def default_team_id(conn):
@@ -385,10 +412,16 @@ def _migrate(conn):
     if "doc_original" not in scols:
         conn.execute("ALTER TABLE services ADD COLUMN doc_original TEXT")
         conn.commit()
+    if "doc_data" not in scols:
+        conn.execute(f"ALTER TABLE services ADD COLUMN doc_data {blob_sql_type()}")
+        conn.commit()
 
     ucols = _columns(conn, "users")
     if "avatar" not in ucols:
         conn.execute("ALTER TABLE users ADD COLUMN avatar TEXT")
+        conn.commit()
+    if "avatar_data" not in ucols:
+        conn.execute(f"ALTER TABLE users ADD COLUMN avatar_data {blob_sql_type()}")
         conn.commit()
 
     # Accounts now require a username, a verified email, and admin approval.

@@ -1,6 +1,7 @@
 """Shared helpers: auth guards and the qualification rules that decide whether a
 user is allowed to actually serve in a role."""
 
+import io
 import os
 import re
 import smtplib
@@ -71,47 +72,34 @@ def allowed_document(filename):
 
 
 def save_document(file_storage):
-    """Persist an uploaded document and return (stored_name, original_name).
+    """Read an uploaded document and return (stored_name, original_name, data).
 
-    Returns (None, None) when no usable file was provided. Raises ValueError for
-    a disallowed file type so the caller can flash a message.
+    The bytes are returned so the caller can store them in the database (they
+    survive redeploys, unlike files on Render's ephemeral disk). Returns
+    (None, None, None) when no usable file was provided. Raises ValueError for a
+    disallowed file type so the caller can flash a message.
     """
     if file_storage is None or not file_storage.filename:
-        return (None, None)
+        return (None, None, None)
     original = file_storage.filename
     if not allowed_document(original):
         raise ValueError("Unsupported file type.")
     safe = secure_filename(original) or "document"
     stored = f"{uuid.uuid4().hex}_{safe}"
-    dest = os.path.join(current_app.config["UPLOAD_PATH"], stored)
-    file_storage.save(dest)
-    return (stored, original)
-
-
-def delete_document(stored_name):
-    if not stored_name:
-        return
-    path = os.path.join(current_app.config["UPLOAD_PATH"], stored_name)
-    try:
-        os.remove(path)
-    except OSError:
-        pass
+    data = file_storage.read()
+    return (stored, original, data)
 
 
 ALLOWED_AVATAR_EXTENSIONS = {"png", "jpg", "jpeg", "webp", "gif", "bmp"}
 
 
-def avatars_dir():
-    d = os.path.join(current_app.config["UPLOAD_PATH"], "avatars")
-    os.makedirs(d, exist_ok=True)
-    return d
-
-
 def save_avatar(file_storage):
-    """Process an uploaded photo into a square avatar and return its filename.
+    """Process an uploaded photo into a square avatar; return (name, jpeg_bytes).
 
     Honours EXIF orientation, centre-crops to a square, and resizes to 256px so
-    avatars are small and uniform. Raises ValueError on an unusable image.
+    avatars are small and uniform. The JPEG bytes are returned for storage in
+    the database. Returns None when no file was provided; raises ValueError on
+    an unusable image.
     """
     if file_storage is None or not file_storage.filename:
         return None
@@ -129,17 +117,9 @@ def save_avatar(file_storage):
         raise ValueError("That image could not be read. Try a different photo.")
 
     stored = f"avatar_{uuid.uuid4().hex}.jpg"
-    img.save(os.path.join(avatars_dir(), stored), "JPEG", quality=85, optimize=True)
-    return stored
-
-
-def delete_avatar(stored_name):
-    if not stored_name:
-        return
-    try:
-        os.remove(os.path.join(avatars_dir(), stored_name))
-    except OSError:
-        pass
+    buf = io.BytesIO()
+    img.save(buf, "JPEG", quality=85, optimize=True)
+    return (stored, buf.getvalue())
 
 
 def _ics_escape(s):

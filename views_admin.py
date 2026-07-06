@@ -10,12 +10,12 @@ from flask import (
 from werkzeug.security import generate_password_hash
 
 from db import (get_db, now_iso, execute_returning_id, ensure_one_role_index,
-                default_team_id)
+                default_team_id, to_binary)
 from helpers import (
     admin_required, current_user, role_training_status, is_qualified,
-    qualified_users_for_role, save_document, delete_document,
+    qualified_users_for_role, save_document,
     get_announcements, get_polls, notify, notify_all, assignment_conflicts,
-    build_ics, delete_avatar, notify_assignment, auto_schedule_plan,
+    notify_assignment, auto_schedule_plan,
 )
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
@@ -361,8 +361,7 @@ def delete_user(user_id):
             conn.close()
             flash("You can't delete the last administrator.", "warning")
             return redirect(url_for("admin.user_detail", user_id=user_id))
-    # Remove their avatar file; the database cascades remove the rest of their data.
-    delete_avatar(u["avatar"])
+    # Deleting the user row cascades and removes their avatar bytes and all data.
     conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
     conn.commit()
     conn.close()
@@ -649,16 +648,17 @@ def services():
         notes = request.form.get("notes", "").strip()
         if title and service_date:
             try:
-                stored, original = save_document(request.files.get("document"))
+                stored, original, data = save_document(request.files.get("document"))
             except ValueError as e:
                 flash(str(e), "danger")
                 conn.close()
                 return redirect(url_for("admin.services"))
             conn.execute(
                 "INSERT INTO services (title, service_date, start_time, location, notes,"
-                " doc_filename, doc_original, created_at)"
-                " VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                (title, service_date, start_time, location, notes, stored, original, now_iso()),
+                " doc_filename, doc_original, doc_data, created_at)"
+                " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (title, service_date, start_time, location, notes, stored, original,
+                 to_binary(data), now_iso()),
             )
             conn.commit()
             flash("Service created.", "success")
@@ -700,17 +700,17 @@ def edit_service(service_id):
         )
         # Optionally replace the programme-flow document.
         try:
-            stored, original = save_document(request.files.get("document"))
+            stored, original, data = save_document(request.files.get("document"))
         except ValueError as e:
             conn.commit()
             conn.close()
             flash(str(e), "danger")
             return redirect(url_for("admin.schedule", service_id=service_id))
         if stored:
-            delete_document(svc["doc_filename"])
             conn.execute(
-                "UPDATE services SET doc_filename = ?, doc_original = ? WHERE id = ?",
-                (stored, original, service_id),
+                "UPDATE services SET doc_filename = ?, doc_original = ?, doc_data = ?"
+                " WHERE id = ?",
+                (stored, original, to_binary(data), service_id),
             )
         conn.commit()
         flash("Service updated.", "success")
@@ -722,16 +722,14 @@ def edit_service(service_id):
 @admin_required
 def remove_service_document(service_id):
     conn = get_db()
-    svc = conn.execute("SELECT doc_filename FROM services WHERE id = ?", (service_id,)).fetchone()
-    if svc:
-        delete_document(svc["doc_filename"])
-        conn.execute(
-            "UPDATE services SET doc_filename = NULL, doc_original = NULL WHERE id = ?",
-            (service_id,),
-        )
-        conn.commit()
-        flash("Programme document removed.", "info")
+    conn.execute(
+        "UPDATE services SET doc_filename = NULL, doc_original = NULL, doc_data = NULL"
+        " WHERE id = ?",
+        (service_id,),
+    )
+    conn.commit()
     conn.close()
+    flash("Programme document removed.", "info")
     return redirect(url_for("admin.schedule", service_id=service_id))
 
 
@@ -739,9 +737,7 @@ def remove_service_document(service_id):
 @admin_required
 def delete_service(service_id):
     conn = get_db()
-    svc = conn.execute("SELECT doc_filename FROM services WHERE id = ?", (service_id,)).fetchone()
-    if svc:
-        delete_document(svc["doc_filename"])
+    # Deleting the service row removes its stored document bytes too.
     conn.execute("DELETE FROM services WHERE id = ?", (service_id,))
     conn.commit()
     conn.close()

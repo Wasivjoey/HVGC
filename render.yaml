@@ -31,9 +31,9 @@ services:
           property: connectionString
       - key: PYTHON_VERSION
         value: "3.12.7"
-      # Uploaded programme documents & avatars. By default they go to a writable
-      # (but ephemeral) folder, cleared on each deploy. To keep them, uncomment
-      # the disk block below AND set UPLOAD_PATH to /var/data/uploads.
+      # Uploaded avatars & programme documents are stored IN THE DATABASE, so
+      # they survive every deploy on the free plan — no persistent disk needed.
+      # UPLOAD_PATH is only a scratch dir for processing and can stay unset.
       # - key: UPLOAD_PATH
       #   value: /var/data/uploads
 

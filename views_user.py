@@ -12,10 +12,10 @@ from flask import (
 
 from werkzeug.security import generate_password_hash, check_password_hash
 
-from db import get_db, now_iso
+from db import get_db, now_iso, to_binary, from_binary
 from helpers import (
     login_required, current_user, role_training_status, is_qualified, parse_video,
-    save_avatar, delete_avatar, avatars_dir, get_announcements, get_polls, poll_is_open,
+    save_avatar, get_announcements, get_polls, poll_is_open,
     build_ics, build_ics_feed, lead_or_admin_required, can_manage_member, notify,
 )
 
@@ -337,14 +337,17 @@ def service_detail(service_id):
 def service_document(service_id):
     conn = get_db()
     svc = conn.execute(
-        "SELECT doc_filename, doc_original FROM services WHERE id = ?", (service_id,)
+        "SELECT doc_original, doc_data FROM services WHERE id = ?", (service_id,)
     ).fetchone()
     conn.close()
-    if not svc or not svc["doc_filename"]:
+    if not svc or svc["doc_data"] is None:
         abort(404)
-    return send_from_directory(
-        current_app.config["UPLOAD_PATH"], svc["doc_filename"],
-        as_attachment=False, download_name=svc["doc_original"],
+    import mimetypes
+    name = svc["doc_original"] or "document"
+    mime = mimetypes.guess_type(name)[0] or "application/octet-stream"
+    return Response(
+        from_binary(svc["doc_data"]), mimetype=mime,
+        headers={"Content-Disposition": f'inline; filename="{name}"'},
     )
 
 
@@ -766,11 +769,15 @@ def complete_training(training_id):
 @login_required
 def user_avatar(user_id):
     conn = get_db()
-    row = conn.execute("SELECT avatar FROM users WHERE id = ?", (user_id,)).fetchone()
+    row = conn.execute(
+        "SELECT avatar, avatar_data FROM users WHERE id = ?", (user_id,)
+    ).fetchone()
     conn.close()
-    if not row or not row["avatar"]:
+    if not row or not row["avatar"] or row["avatar_data"] is None:
         abort(404)
-    return send_from_directory(avatars_dir(), row["avatar"], max_age=300)
+    resp = Response(from_binary(row["avatar_data"]), mimetype="image/jpeg")
+    resp.headers["Cache-Control"] = "private, max-age=300"
+    return resp
 
 
 @bp.route("/manual")
@@ -835,8 +842,10 @@ def profile():
 
         # Remove existing avatar if requested.
         if request.form.get("remove_avatar") == "1":
-            delete_avatar(user["avatar"])
-            conn.execute("UPDATE users SET avatar = NULL WHERE id = ?", (user["id"],))
+            conn.execute(
+                "UPDATE users SET avatar = NULL, avatar_data = NULL WHERE id = ?",
+                (user["id"],),
+            )
 
         # Handle a newly uploaded avatar photo.
         try:
@@ -847,9 +856,10 @@ def profile():
             flash(str(ex), "danger")
             return redirect(url_for("user.profile"))
         if new_avatar:
-            delete_avatar(user["avatar"])
+            stored, data = new_avatar
             conn.execute(
-                "UPDATE users SET avatar = ? WHERE id = ?", (new_avatar, user["id"])
+                "UPDATE users SET avatar = ?, avatar_data = ? WHERE id = ?",
+                (stored, to_binary(data), user["id"]),
             )
 
         conn.commit()
