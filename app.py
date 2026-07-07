@@ -48,7 +48,11 @@ def create_app():
               flush=True)
         upload_path = fallback
     app.config["UPLOAD_PATH"] = upload_path
-    app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16 MB cap per upload
+    app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16 MB request cap (big source photos OK)
+    # Documents are stored in the database, so cap the stored size to keep a
+    # small (e.g. Basic-256mb) Postgres instance from filling up. Big source
+    # photos for avatars are fine — they're downscaled to a tiny JPEG first.
+    app.config["MAX_DOC_MB"] = int(os.environ.get("MAX_DOC_MB", "5"))
 
     # Outgoing email for address verification. If SMTP_HOST is unset, the app
     # runs in "no email" mode: verification links are logged and shown on screen

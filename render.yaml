@@ -36,6 +36,10 @@ services:
       # UPLOAD_PATH is only a scratch dir for processing and can stay unset.
       # - key: UPLOAD_PATH
       #   value: /var/data/uploads
+      # Max size (MB) of a document stored in the DB. Avatars are always tiny
+      # (downscaled to a small JPEG). Lower this to save room on a small database.
+      # - key: MAX_DOC_MB
+      #   value: "5"
 
       # ---- Optional: email for verification & password reset ----
       # Add these in the Render dashboard (or here) to enable real emails.

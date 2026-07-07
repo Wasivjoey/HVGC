@@ -87,6 +87,12 @@ def save_document(file_storage):
     safe = secure_filename(original) or "document"
     stored = f"{uuid.uuid4().hex}_{safe}"
     data = file_storage.read()
+    limit_mb = current_app.config.get("MAX_DOC_MB", 5)
+    if len(data) > limit_mb * 1024 * 1024:
+        raise ValueError(
+            f"Document is too large ({len(data) / 1024 / 1024:.1f} MB). "
+            f"Please keep it under {limit_mb} MB (compress the PDF or export smaller)."
+        )
     return (stored, original, data)
 
 
