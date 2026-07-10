@@ -23,6 +23,15 @@ bp = Blueprint("user", __name__)
 
 
 @bp.route("/")
+def home():
+    """Public landing page describing the app. Signed-in users go to their
+    dashboard; everyone else sees the marketing page with a Sign in option."""
+    if current_user():
+        return redirect(url_for("user.dashboard"))
+    return render_template("landing.html")
+
+
+@bp.route("/dashboard")
 @login_required
 def dashboard():
     user = current_user()
