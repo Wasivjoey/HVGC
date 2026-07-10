@@ -91,17 +91,24 @@ def create_app():
 
     @app.context_processor
     def inject_theme():
-        # The site's accent theme rotates each calendar month (1-12). An optional
-        # THEME_MONTH override (env or ?theme= query) helps preview other months.
+        # The accent theme (theme-1..theme-12) is resolved in priority order:
+        #   ?theme= query (preview) > this session's choice > the signed-in user's
+        #   saved preference > 'auto', which follows the calendar month.
+        # 'auto' or an out-of-range value falls back to the current month.
         from datetime import date
-        try:
-            month = int(request.args.get("theme")
-                        or os.environ.get("THEME_MONTH")
-                        or date.today().month)
-        except (TypeError, ValueError):
+        choice = request.args.get("theme") or session.get("theme")
+        if not choice:
+            user = current_user()
+            if user is not None and user["theme_pref"]:
+                choice = user["theme_pref"]
+        if not choice or choice == "auto":
             month = date.today().month
-        month = ((month - 1) % 12) + 1
-        return {"theme_month": month}
+        else:
+            try:
+                month = ((int(choice) - 1) % 12) + 1
+            except (TypeError, ValueError):
+                month = date.today().month
+        return {"theme_month": month, "theme_choice": choice or "auto"}
 
     @app.context_processor
     def inject_notifications():

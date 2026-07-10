@@ -7,7 +7,7 @@ import secrets
 
 from flask import (
     Blueprint, render_template, request, redirect, url_for, flash,
-    current_app, send_from_directory, abort, Response,
+    current_app, send_from_directory, abort, Response, session,
 )
 
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -813,6 +813,25 @@ def manual_pdf():
         current_app.root_path, filename,
         as_attachment=True, download_name="HVGC-LINEUP-Manual.pdf",
     )
+
+
+@bp.route("/set-theme", methods=["POST"])
+def set_theme():
+    """Choose a colour theme. 'auto' follows the monthly rotation; '1'..'12'
+    pins a specific theme. Saved to the session (works for anyone) and, when
+    signed in, persisted to the user's profile so it follows them everywhere."""
+    choice = request.form.get("theme", "auto")
+    if choice not in {"auto", *(str(i) for i in range(1, 13))}:
+        choice = "auto"
+    session["theme"] = choice
+    user = current_user()
+    if user is not None:
+        conn = get_db()
+        conn.execute("UPDATE users SET theme_pref = ? WHERE id = ?", (choice, user["id"]))
+        conn.commit()
+        conn.close()
+    flash("Theme updated.", "success")
+    return redirect(request.referrer or url_for("user.profile"))
 
 
 @bp.route("/profile", methods=["GET", "POST"])

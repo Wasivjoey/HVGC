@@ -79,4 +79,37 @@
     <p class="muted" style="font-size:13px;">Account type: <strong>{{ 'Administrator' if current_user['is_admin'] else 'Volunteer' }}</strong></p>
   </div>
 </div>
+
+<div class="card">
+  <h3>🎨 Colour theme</h3>
+  <p class="muted" style="font-size:13px;margin-top:0;">
+    Pick the colours you'd like across the app. <strong>Automatic</strong> changes
+    the theme every month; or choose one to keep it fixed.
+  </p>
+  {% set cur = current_user['theme_pref'] or 'auto' %}
+  {% set themes = [
+      ('1','Winter blue','#2f80d8'), ('2','Love red','#e0405a'),
+      ('3','Spring green','#1f9d57'), ('4','Aqua','#12a08e'),
+      ('5','Floral pink','#d94f8c'), ('6','Summer sun','#e0902b'),
+      ('7','Bold blue','#2f5fd8'), ('8','Warm orange','#e0722b'),
+      ('9','Autumn violet','#8a5cd8'), ('10','Pumpkin','#e2620f'),
+      ('11','Harvest','#c07018'), ('12','Festive','#d1273f') ] %}
+  <form method="post" action="{{ url_for('user.set_theme') }}">
+    <div class="theme-pick">
+      <label class="theme-opt {{ 'sel' if cur == 'auto' }}">
+        <input type="radio" name="theme" value="auto" {{ 'checked' if cur == 'auto' }}>
+        <span class="theme-swatch2 theme-swatch-auto"></span>
+        <span class="theme-name">Automatic<br><small class="muted">Matches the month</small></span>
+      </label>
+      {% for val, name, col in themes %}
+      <label class="theme-opt {{ 'sel' if cur == val }}">
+        <input type="radio" name="theme" value="{{ val }}" {{ 'checked' if cur == val }}>
+        <span class="theme-swatch2" style="background:{{ col }}"></span>
+        <span class="theme-name">{{ name }}</span>
+      </label>
+      {% endfor %}
+    </div>
+    <button class="btn" style="margin-top:16px;">Save theme</button>
+  </form>
+</div>
 {% endblock %}
