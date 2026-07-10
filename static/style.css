@@ -6,6 +6,8 @@
   --line: #e6e9f0;
   --brand: #5b6cff;
   --brand-dark: #4453d8;
+  --accent-2: #8a5cd8;   /* secondary theme accent (rotates monthly) */
+  --accent-3: #e0405a;   /* tertiary theme accent (rotates monthly) */
   --green: #18a558;
   --green-bg: #e4f7ec;
   --red: #e0405a;
@@ -16,6 +18,25 @@
   --radius: 14px;
   --shadow: 0 1px 2px rgba(16,24,40,.06), 0 8px 24px rgba(16,24,40,.06);
 }
+
+/* ---- Monthly themes -------------------------------------------------------
+   The brand accent (buttons, active nav, links, badges) and the landing-page
+   gradients rotate every calendar month. The month class (theme-1 … theme-12)
+   is set on <body> from the server. Each theme sets three accent colours; the
+   light badge tint is derived from the brand so pills stay legible. */
+body[class*="theme-"] { --blue-bg: color-mix(in srgb, var(--brand) 13%, #ffffff); }
+body.theme-1  { --brand:#2f80d8; --brand-dark:#1f63ad; --accent-2:#5b6cff; --accent-3:#12a08e; } /* Jan — winter blue */
+body.theme-2  { --brand:#e0405a; --brand-dark:#b82f47; --accent-2:#e86fa0; --accent-3:#8a5cd8; } /* Feb — love red/pink */
+body.theme-3  { --brand:#1f9d57; --brand-dark:#157a42; --accent-2:#5cc08a; --accent-3:#2f9ed8; } /* Mar — spring green */
+body.theme-4  { --brand:#12a08e; --brand-dark:#0c7d6f; --accent-2:#4fc3b3; --accent-3:#5b8ce0; } /* Apr — teal / aqua */
+body.theme-5  { --brand:#d94f8c; --brand-dark:#b23a70; --accent-2:#7bbf3f; --accent-3:#8a5cd8; } /* May — floral pink */
+body.theme-6  { --brand:#e0902b; --brand-dark:#b8721e; --accent-2:#e0c04a; --accent-3:#2f9ed8; } /* Jun — summer sun */
+body.theme-7  { --brand:#2f5fd8; --brand-dark:#2049b0; --accent-2:#5b6cff; --accent-3:#e0405a; } /* Jul — bold blue */
+body.theme-8  { --brand:#e0722b; --brand-dark:#b85820; --accent-2:#e0a63a; --accent-3:#d94f8c; } /* Aug — warm orange */
+body.theme-9  { --brand:#8a5cd8; --brand-dark:#6c44b0; --accent-2:#c2479b; --accent-3:#e07b2b; } /* Sep — autumn violet */
+body.theme-10 { --brand:#e2620f; --brand-dark:#b84d0a; --accent-2:#8a5cd8; --accent-3:#d1273f; } /* Oct — pumpkin */
+body.theme-11 { --brand:#c07018; --brand-dark:#9a5812; --accent-2:#e0902b; --accent-3:#a5432f; } /* Nov — harvest */
+body.theme-12 { --brand:#d1273f; --brand-dark:#a81d31; --accent-2:#1f9d57; --accent-3:#e0b23a; } /* Dec — festive */
 
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
@@ -407,29 +428,30 @@ body.landing { background: #fff; color: var(--ink); }
 
 .lp-hero {
   position: relative; overflow: hidden;
+  background: linear-gradient(180deg, #eef0ff 0%, #ffffff 78%); /* fallback */
   background:
-    radial-gradient(900px 420px at 8% -20%, rgba(91,108,255,.30), transparent 60%),
-    radial-gradient(820px 420px at 95% -10%, rgba(224,64,90,.24), transparent 60%),
-    radial-gradient(760px 460px at 60% 120%, rgba(21,158,142,.24), transparent 60%),
-    linear-gradient(180deg, #eef0ff 0%, #ffffff 78%);
+    radial-gradient(900px 420px at 8% -20%, color-mix(in srgb, var(--brand) 30%, transparent), transparent 60%),
+    radial-gradient(820px 420px at 95% -10%, color-mix(in srgb, var(--accent-3) 26%, transparent), transparent 60%),
+    radial-gradient(760px 460px at 60% 120%, color-mix(in srgb, var(--accent-2) 24%, transparent), transparent 60%),
+    linear-gradient(180deg, color-mix(in srgb, var(--brand) 10%, #fff) 0%, #ffffff 78%);
   border-bottom: 1px solid var(--line);
 }
 .lp-hero-inner { max-width: 800px; margin: 0 auto; padding: 66px 24px 76px; text-align: center; position: relative; }
 .lp-eyebrow {
   display: inline-block; color: #fff; font-weight: 700; font-size: 13px;
   padding: 6px 14px; border-radius: 999px; margin-bottom: 18px; letter-spacing: .02em;
-  background: linear-gradient(90deg, var(--brand), #8a5cd8);
-  box-shadow: 0 6px 16px rgba(91,108,255,.35);
+  background: linear-gradient(90deg, var(--brand), var(--accent-2));
+  box-shadow: 0 6px 16px rgba(16,24,40,.22);
 }
 .lp-hero h1 {
   font-size: 46px; line-height: 1.08; letter-spacing: -.02em; margin: 0 0 18px;
-  background: linear-gradient(100deg, #4453d8 0%, #8a5cd8 42%, #e0405a 100%);
+  background: linear-gradient(100deg, var(--brand-dark) 0%, var(--accent-2) 42%, var(--accent-3) 100%);
   -webkit-background-clip: text; background-clip: text;
-  -webkit-text-fill-color: transparent; color: #4453d8;
+  -webkit-text-fill-color: transparent; color: var(--brand-dark);
 }
 .lp-tagline {
   font-size: 15px; font-weight: 700; margin: 0 auto 20px; max-width: 640px; letter-spacing: .01em;
-  background: linear-gradient(90deg, var(--green), var(--brand) 55%, #c2479b);
+  background: linear-gradient(90deg, var(--accent-3), var(--brand) 55%, var(--accent-2));
   -webkit-background-clip: text; background-clip: text;
   -webkit-text-fill-color: transparent; color: var(--brand-dark);
 }
@@ -437,8 +459,8 @@ body.landing { background: #fff; color: var(--ink); }
 .lp-cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
 .lp-cta .btn { padding: 12px 24px; font-size: 15px; }
 .lp-cta .btn:first-child {
-  background: linear-gradient(90deg, var(--brand), #8a5cd8);
-  box-shadow: 0 8px 20px rgba(91,108,255,.35); border: none;
+  background: linear-gradient(90deg, var(--brand), var(--accent-2));
+  box-shadow: 0 8px 20px rgba(16,24,40,.22); border: none;
 }
 .lp-cta .btn:first-child:hover { filter: brightness(1.06); }
 .lp-note { color: var(--muted); font-size: 13px; margin-top: 14px; }
@@ -495,7 +517,7 @@ body.landing { background: #fff; color: var(--ink); }
 
 .lp-final {
   text-align: center; padding: 76px 24px; color: #fff;
-  background: linear-gradient(120deg, #4453d8 0%, #8a5cd8 50%, #e0405a 100%);
+  background: linear-gradient(120deg, var(--brand-dark) 0%, var(--accent-2) 50%, var(--accent-3) 100%);
 }
 .lp-final h2 { font-size: 30px; margin: 0 0 22px; color: #fff; }
 .lp-final .btn { background: #fff; color: var(--brand-dark); border: none; box-shadow: 0 8px 20px rgba(0,0,0,.18); }

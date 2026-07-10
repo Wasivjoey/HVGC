@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <link rel="icon" href="{{ url_for('static', filename='logo.png') }}">
 </head>
-<body class="landing">
+<body class="landing theme-{{ theme_month }}">
 
 <header class="lp-nav">
   <a class="lp-brand" href="{{ url_for('user.home') }}">

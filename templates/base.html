@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <link rel="icon" href="{{ url_for('static', filename='logo.png') }}">
 </head>
-<body>
+<body class="theme-{{ theme_month }}">
 {% if current_user %}
 <header class="topbar no-print">
   <button class="hamburger" onclick="document.body.classList.toggle('nav-open')" aria-label="Toggle menu">

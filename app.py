@@ -90,6 +90,20 @@ def create_app():
         return {"current_user": current_user()}
 
     @app.context_processor
+    def inject_theme():
+        # The site's accent theme rotates each calendar month (1-12). An optional
+        # THEME_MONTH override (env or ?theme= query) helps preview other months.
+        from datetime import date
+        try:
+            month = int(request.args.get("theme")
+                        or os.environ.get("THEME_MONTH")
+                        or date.today().month)
+        except (TypeError, ValueError):
+            month = date.today().month
+        month = ((month - 1) % 12) + 1
+        return {"theme_month": month}
+
+    @app.context_processor
     def inject_notifications():
         from db import get_db
         from helpers import unread_notification_count
