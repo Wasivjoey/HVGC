@@ -417,6 +417,7 @@ body.landing { background: #fff; color: var(--ink); }
   font-weight: 600; font-size: 13px; padding: 5px 12px; border-radius: 999px; margin-bottom: 18px;
 }
 .lp-hero h1 { font-size: 44px; line-height: 1.1; letter-spacing: -.02em; margin: 0 0 18px; }
+.lp-tagline { font-size: 15px; font-weight: 600; color: var(--brand-dark); margin: 0 auto 20px; max-width: 620px; letter-spacing: .01em; }
 .lp-lede { font-size: 18px; color: var(--muted); margin: 0 auto 28px; max-width: 620px; }
 .lp-cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
 .lp-cta .btn { padding: 12px 22px; font-size: 15px; }

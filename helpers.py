@@ -156,8 +156,8 @@ def _vevent_lines(uid, summary, service_date, start_time, location, description,
         lines.append("LOCATION:" + _ics_escape(location))
     if description:
         lines.append("DESCRIPTION:" + _ics_escape(description))
-    for trigger, note in (("-P1D", "Tomorrow you're serving on the AV team"),
-                          ("-PT1H", "You're serving on the AV team in 1 hour")):
+    for trigger, note in (("-P1D", "Tomorrow you're serving with your ministry team"),
+                          ("-PT1H", "You're serving with your ministry team in 1 hour")):
         lines += ["BEGIN:VALARM", "TRIGGER:" + trigger, "ACTION:DISPLAY",
                   "DESCRIPTION:" + _ics_escape(note), "END:VALARM"]
     lines.append("END:VEVENT")
@@ -536,7 +536,7 @@ def notify_assignment(conn, service_id, user_id, role_id):
     if svc["notes"]:
         desc += "\n\n" + svc["notes"]
     ics = build_ics(f"assignment-{assignment['id']}@hvgc-lineup",
-                    f"AV Team: {role['name']} — {svc['title']}",
+                    f"Serving: {role['name']} — {svc['title']}",
                     svc["service_date"], svc["start_time"], svc["location"], desc)
     cal_link = url_for("user.service_calendar", service_id=service_id, _external=True)
     notify(conn, user_id,
