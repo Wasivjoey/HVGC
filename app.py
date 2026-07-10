@@ -65,7 +65,13 @@ def create_app():
         "SMTP_FROM", os.environ.get("SMTP_USER") or "no-reply@hvgclineup.local"
     )
     app.config["SMTP_TLS"] = os.environ.get("SMTP_TLS", "1") != "0"
-    app.config["EMAIL_ENABLED"] = bool(app.config["SMTP_HOST"])
+    app.config["EMAIL_FROM_NAME"] = os.environ.get("EMAIL_FROM_NAME", "HVGC LINEUP")
+    # Brevo transactional email API. Preferred on hosts (like Render) that block
+    # outbound SMTP ports, since it sends over HTTPS (port 443). When set, it is
+    # used instead of SMTP. Get a key at brevo.com → SMTP & API → API Keys.
+    app.config["BREVO_API_KEY"] = os.environ.get("BREVO_API_KEY")
+    # Email is on when either transport is configured.
+    app.config["EMAIL_ENABLED"] = bool(app.config["BREVO_API_KEY"] or app.config["SMTP_HOST"])
 
     # Optional AI auto-scheduler. The rules-based auto-scheduler always works;
     # when an Anthropic API key is present the "AI assistant" option becomes

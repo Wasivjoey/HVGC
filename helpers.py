@@ -21,14 +21,67 @@ def send_email(to_address, subject, body, attachments=None):
     """Send a plain-text email, optionally with attachments. Returns True if sent.
 
     attachments: list of (filename, data, maintype, subtype) tuples.
-    When SMTP isn't configured the message is logged and the function returns
-    False, so callers can fall back to showing links on screen.
+    Uses the Brevo HTTP API when a BREVO_API_KEY is configured (works over HTTPS
+    on hosts that block SMTP ports, e.g. Render), otherwise falls back to SMTP.
+    When neither is configured the message is logged and False is returned so
+    callers can fall back to showing links on screen.
     """
     cfg = current_app.config
     if not cfg.get("EMAIL_ENABLED"):
         current_app.logger.info("[EMAIL not configured] To: %s | %s\n%s",
                                 to_address, subject, body)
         return False
+    if cfg.get("BREVO_API_KEY"):
+        return _send_email_brevo(to_address, subject, body, attachments)
+    return _send_email_smtp(to_address, subject, body, attachments)
+
+
+def _send_email_brevo(to_address, subject, body, attachments=None):
+    """Send via Brevo's transactional email API over HTTPS (port 443)."""
+    import base64
+    import json
+    import urllib.error
+    import urllib.request
+
+    cfg = current_app.config
+    payload = {
+        "sender": {"email": cfg["SMTP_FROM"], "name": cfg.get("EMAIL_FROM_NAME", "HVGC LINEUP")},
+        "to": [{"email": to_address}],
+        "subject": subject,
+        "textContent": body,
+    }
+    atts = []
+    for filename, data, _maintype, _subtype in (attachments or []):
+        if isinstance(data, str):
+            data = data.encode("utf-8")
+        atts.append({"name": filename, "content": base64.b64encode(data).decode("ascii")})
+    if atts:
+        payload["attachment"] = atts
+
+    req = urllib.request.Request(
+        "https://api.brevo.com/v3/smtp/email",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"api-key": cfg["BREVO_API_KEY"], "content-type": "application/json",
+                 "accept": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            resp.read()
+        current_app.logger.info("Email sent to %s via Brevo: %s", to_address, subject)
+        return True
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode("utf-8", "replace")[:300]
+        current_app.logger.error("Brevo send FAILED to %s: %s %s", to_address, e.code, detail)
+        return False
+    except Exception as e:  # network problems shouldn't crash the request
+        current_app.logger.error("Brevo send FAILED to %s: %s", to_address, e)
+        return False
+
+
+def _send_email_smtp(to_address, subject, body, attachments=None):
+    """Send via SMTP (smtplib). Note: many hosts (e.g. Render) block SMTP ports."""
+    cfg = current_app.config
     msg = EmailMessage()
     msg["Subject"] = subject
     msg["From"] = cfg["SMTP_FROM"]

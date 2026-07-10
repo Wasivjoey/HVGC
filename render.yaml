@@ -41,9 +41,22 @@ services:
       # - key: MAX_DOC_MB
       #   value: "5"
 
-      # ---- Optional: email for verification & password reset ----
-      # Add these in the Render dashboard (or here) to enable real emails.
-      # Without them the app shows verification/reset links on screen instead.
+      # ---- Email for verification, password reset & schedule invites ----
+      # Without any of these, the app shows verification/reset links on screen.
+      #
+      # RECOMMENDED on Render: Brevo's transactional email API. It sends over
+      # HTTPS (port 443), so it works on every plan — Render blocks outbound
+      # SMTP ports (25/465/587) on free instances. Create a key at
+      # brevo.com -> SMTP & API -> API Keys, and verify your sender address.
+      # - key: BREVO_API_KEY
+      #   sync: false        # set as a secret in the dashboard
+      # - key: SMTP_FROM
+      #   value: no-reply@yourchurch.org   # a Brevo-verified sender address
+      # - key: EMAIL_FROM_NAME
+      #   value: HVGC LINEUP
+      #
+      # Alternative: classic SMTP (needs a PAID Render instance — SMTP ports are
+      # blocked on free web services). Leave BREVO_API_KEY unset to use this.
       # - key: SMTP_HOST
       #   value: smtp.example.com
       # - key: SMTP_PORT
