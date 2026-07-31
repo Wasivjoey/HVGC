@@ -96,6 +96,13 @@ def create_app():
         return {"current_user": current_user()}
 
     @app.context_processor
+    def inject_admin_access():
+        from helpers import user_admin_features, is_full_admin
+        user = current_user()
+        return {"admin_features": user_admin_features(user),
+                "is_full_admin": is_full_admin(user)}
+
+    @app.context_processor
     def inject_theme():
         # The accent theme (theme-1..theme-12) is resolved in priority order:
         #   ?theme= query (preview) > this session's choice > the signed-in user's

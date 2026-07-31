@@ -42,6 +42,7 @@
         <td><span class="badge badge-gray">{{ p['roles'] }} role{{ 's' if p['roles'] != 1 }}</span></td>
         <td>
           {% if p['u']['is_admin'] %}<span class="badge badge-blue">Admin</span>
+          {% elif p['u']['admin_perms'] %}<span class="badge badge-green">Assistant</span>
           {% elif p['u']['team_lead'] %}<span class="badge badge-amber">Team Lead</span>
           {% else %}<span class="badge badge-gray">Volunteer</span>{% endif %}
         </td>

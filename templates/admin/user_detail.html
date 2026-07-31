@@ -68,6 +68,8 @@
   <h3>👥 Team &amp; tier</h3>
   <div class="row-actions" style="margin-bottom:6px;">
     {% for t in teams %}{% if t['id'] == u['team_id'] %}<span class="team-pill" style="background:{{ team_color(t['id']) }}">{{ t['name'] }}</span>{% endif %}{% endfor %}
+    {% if u['is_admin'] %}<span class="badge badge-blue">Administrator</span>
+    {% elif u['admin_perms'] %}<span class="badge badge-green">Assistant</span>{% endif %}
     {% if u['team_lead'] %}<span class="badge badge-amber">Team Lead</span>{% endif %}
   </div>
   <form method="post" action="{{ url_for('admin.set_user_team', user_id=u['id']) }}" class="form-row" style="align-items:flex-end;">
@@ -89,6 +91,27 @@
     <button class="btn btn-sm {{ 'btn-ghost' if u['team_lead'] else 'btn-amber' }}">{{ 'Remove team-lead role' if u['team_lead'] else 'Make team lead' }}</button>
   </form>
 </div>
+
+{% if is_full_admin and not u['is_admin'] %}
+<div class="card">
+  <h3>🎚️ Assistant admin access</h3>
+  <p class="muted" style="font-size:13px;margin-top:0;">Make this volunteer an
+    <strong>assistant</strong> by granting one or more admin features. They'll see only
+    the tools you tick — nothing else. Untick everything to remove assistant access.
+    (Managing admins/assistants stays with full administrators.)</p>
+  <form method="post" action="{{ url_for('admin.set_admin_access', user_id=u['id']) }}">
+    <div class="role-check-grid">
+      {% for key, label, emoji in admin_feature_list %}
+      <label class="role-check">
+        <input type="checkbox" name="features" value="{{ key }}" {{ 'checked' if key in granted_features }}>
+        <span>{{ emoji }} {{ label }}</span>
+      </label>
+      {% endfor %}
+    </div>
+    <button class="btn btn-sm" style="margin-top:12px;">Save admin access</button>
+  </form>
+</div>
+{% endif %}
 
 <div class="grid grid-2">
   <div class="card">

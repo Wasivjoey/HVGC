@@ -309,14 +309,93 @@ def login_required(view):
     return wrapped
 
 
+# --------------------------------------------------------------- admin tiers
+# Grantable admin features. An "assistant" is a volunteer a full admin has given
+# one or more of these. (key, label, emoji) — order drives the pickers/sidebar.
+ADMIN_FEATURES = [
+    ("people", "People", "👥"),
+    ("teams", "Teams", "🧩"),
+    ("roles", "Roles", "🎛️"),
+    ("trainings", "Trainings", "📚"),
+    ("services", "Schedule", "🗓️"),
+    ("availability", "Availability Grid", "🟢"),
+    ("swaps", "Swap Approvals", "🔁"),
+    ("announcements", "Announcements", "📣"),
+    ("polls", "Polls", "📊"),
+]
+ADMIN_FEATURE_KEYS = [k for k, _, _ in ADMIN_FEATURES]
+ADMIN_FEATURE_LABELS = {k: label for k, label, _ in ADMIN_FEATURES}
+
+# Which feature each admin endpoint needs. "*" = any admin tier (e.g. the admin
+# home). "admins" = full administrators only (never grantable to assistants, so
+# an assistant can't escalate their own or others' access).
+ADMIN_ENDPOINT_FEATURE = {
+    "admin.dashboard": "*",
+    "admin.users": "people", "admin.bulk_team": "people", "admin.user_detail": "people",
+    "admin.update_user_roles": "people", "admin.update_user_training": "people",
+    "admin.quick_approve": "people", "admin.update_user_details": "people",
+    "admin.reset_user_password": "people", "admin.delete_user": "people",
+    "admin.set_user_team": "people",
+    "admin.teams": "teams", "admin.rename_team": "teams", "admin.delete_team": "teams",
+    "admin.update_user_flags": "admins", "admin.set_admin_access": "admins",
+    "admin.roles": "roles", "admin.edit_role": "roles", "admin.delete_role": "roles",
+    "admin.trainings": "trainings", "admin.edit_training": "trainings",
+    "admin.delete_training": "trainings",
+    "admin.services": "services", "admin.edit_service": "services",
+    "admin.remove_service_document": "services", "admin.delete_service": "services",
+    "admin.schedule": "services", "admin.assign": "services", "admin.unassign": "services",
+    "admin.auto_schedule": "services",
+    "admin.availability": "availability",
+    "admin.swaps": "swaps", "admin.approve_swap": "swaps", "admin.reject_swap": "swaps",
+    "admin.announcements": "announcements", "admin.edit_announcement": "announcements",
+    "admin.toggle_announcement": "announcements", "admin.delete_announcement": "announcements",
+    "admin.polls": "polls", "admin.close_poll": "polls", "admin.reopen_poll": "polls",
+    "admin.delete_poll": "polls",
+}
+
+
+def is_full_admin(user):
+    return bool(user and user["is_admin"])
+
+
+def user_admin_features(user):
+    """Set of admin feature keys this user may use. Full admins get everything;
+    assistants get whatever's stored in admin_perms; everyone else gets none."""
+    if user is None:
+        return set()
+    if user["is_admin"]:
+        return set(ADMIN_FEATURE_KEYS)
+    raw = (user["admin_perms"] or "").strip()
+    if not raw:
+        return set()
+    return {p for p in raw.split(",") if p in ADMIN_FEATURE_KEYS}
+
+
+def can_access_admin_endpoint(user, endpoint):
+    """True if the user may reach the given admin.* endpoint."""
+    if user is None:
+        return False
+    if user["is_admin"]:
+        return True
+    feature = ADMIN_ENDPOINT_FEATURE.get(endpoint)
+    if feature is None or feature == "admins":
+        return False  # unmapped or full-admin-only → deny for assistants
+    features = user_admin_features(user)
+    if feature == "*":
+        return bool(features)  # any assistant can see the admin home
+    return feature in features
+
+
 def admin_required(view):
+    """Allow full admins and assistants (users with any granted admin feature).
+    The blueprint's before_request enforces which specific feature is needed."""
     @wraps(view)
     def wrapped(*args, **kwargs):
         user = current_user()
         if user is None:
             flash("Please sign in to continue.", "warning")
             return redirect(url_for("auth.login"))
-        if not user["is_admin"]:
+        if not user["is_admin"] and not user_admin_features(user):
             flash("That area is for administrators only.", "danger")
             return redirect(url_for("user.dashboard"))
         return view(*args, **kwargs)

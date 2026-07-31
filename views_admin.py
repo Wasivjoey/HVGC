@@ -16,9 +16,28 @@ from helpers import (
     qualified_users_for_role, save_document,
     get_announcements, get_polls, notify, notify_all, assignment_conflicts,
     notify_assignment, auto_schedule_plan,
+    ADMIN_FEATURES, ADMIN_FEATURE_KEYS, is_full_admin, user_admin_features,
+    can_access_admin_endpoint,
 )
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
+
+
+@bp.before_request
+def _enforce_admin_feature():
+    """Gate every admin page. Full admins pass; an assistant may only reach the
+    features they've been granted; everyone else is turned away."""
+    from flask import request
+    user = current_user()
+    if user is None:
+        flash("Please sign in to continue.", "warning")
+        return redirect(url_for("auth.login"))
+    if request.endpoint and not can_access_admin_endpoint(user, request.endpoint):
+        if user["is_admin"] or user_admin_features(user):
+            flash("You don't have access to that admin area.", "danger")
+        else:
+            flash("That area is for administrators only.", "danger")
+        return redirect(url_for("user.dashboard"))
 
 
 @bp.route("/")
@@ -176,9 +195,10 @@ def user_detail(user_id):
 
     teams = conn.execute("SELECT * FROM teams ORDER BY name").fetchall()
     conn.close()
+    granted = set((u["admin_perms"] or "").split(",")) if u["admin_perms"] else set()
     return render_template(
         "admin/user_detail.html", u=u, role_view=role_view, training_view=training_view,
-        teams=teams,
+        teams=teams, admin_feature_list=ADMIN_FEATURES, granted_features=granted,
     )
 
 
@@ -310,11 +330,15 @@ def update_user_details(user_id):
 @admin_required
 def reset_user_password(user_id):
     conn = get_db()
-    u = conn.execute("SELECT username FROM users WHERE id = ?", (user_id,)).fetchone()
+    u = conn.execute("SELECT username, is_admin FROM users WHERE id = ?", (user_id,)).fetchone()
     if u is None:
         conn.close()
         flash("User not found.", "danger")
         return redirect(url_for("admin.users"))
+    if u["is_admin"] and not is_full_admin(current_user()):
+        conn.close()
+        flash("Only a full administrator can reset another administrator's password.", "danger")
+        return redirect(url_for("admin.user_detail", user_id=user_id))
 
     temp = request.form.get("temp_password", "").strip()
     if not temp:
@@ -353,6 +377,10 @@ def delete_user(user_id):
         conn.close()
         flash("User not found.", "danger")
         return redirect(url_for("admin.users"))
+    if u["is_admin"] and not is_full_admin(me):
+        conn.close()
+        flash("Only a full administrator can manage another administrator's account.", "danger")
+        return redirect(url_for("admin.user_detail", user_id=user_id))
     if u["is_admin"]:
         admins = conn.execute(
             "SELECT COUNT(*) AS c FROM users WHERE is_admin = 1"
@@ -488,6 +516,39 @@ def update_user_flags(user_id):
     elif action == "deactivate":
         conn.execute("UPDATE users SET is_active = 0 WHERE id = ?", (user_id,))
         flash("User deactivated.", "info")
+    conn.commit()
+    conn.close()
+    return redirect(url_for("admin.user_detail", user_id=user_id))
+
+
+@bp.route("/users/<int:user_id>/admin-access", methods=["POST"])
+@admin_required
+def set_admin_access(user_id):
+    """Make a volunteer an 'assistant' with a chosen set of admin features (or
+    clear it). Full administrators only — the before_request maps this endpoint
+    to the 'admins' feature, which assistants can never hold."""
+    conn = get_db()
+    target = conn.execute("SELECT is_admin FROM users WHERE id = ?", (user_id,)).fetchone()
+    if target is None:
+        conn.close()
+        flash("User not found.", "danger")
+        return redirect(url_for("admin.users"))
+    if target["is_admin"]:
+        conn.close()
+        flash("That user is already a full administrator.", "info")
+        return redirect(url_for("admin.user_detail", user_id=user_id))
+
+    chosen = [f for f in request.form.getlist("features") if f in ADMIN_FEATURE_KEYS]
+    perms = ",".join(chosen) if chosen else None
+    conn.execute("UPDATE users SET admin_perms = ? WHERE id = ?", (perms, user_id))
+    if chosen:
+        from helpers import ADMIN_FEATURE_LABELS
+        labels = ", ".join(ADMIN_FEATURE_LABELS[c] for c in chosen)
+        notify(conn, user_id, f"You're now an assistant with access to: {labels}.",
+               url_for("admin.dashboard"))
+        flash(f"Saved — assistant with access to: {labels}.", "success")
+    else:
+        flash("Assistant access removed.", "info")
     conn.commit()
     conn.close()
     return redirect(url_for("admin.user_detail", user_id=user_id))
