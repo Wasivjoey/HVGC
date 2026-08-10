@@ -4,7 +4,8 @@
 <div class="page-head">
   <div>
     <h1>Training Quizzes</h1>
-    <p>Generate a quiz from each training's material. Volunteers get it once they've completed the training.</p>
+    <p>Generate a quiz from each training's material — its written content and, when a YouTube
+      video is attached, the video's transcript. Volunteers get it once they've completed the training.</p>
   </div>
 </div>
 
@@ -26,6 +27,7 @@
         <td>
           {% if tv['questions'] %}<span class="badge badge-green">{{ tv['questions'] }} questions</span>
           {% else %}<span class="muted">None yet</span>{% endif %}
+          {% if tv['has_video'] %}<span class="badge badge-gray" title="The attached YouTube video's transcript is used as source material">🎬 video</span>{% endif %}
         </td>
         <td class="row-actions">
           {% if tv['has_material'] %}

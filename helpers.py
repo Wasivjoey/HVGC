@@ -284,6 +284,89 @@ def parse_video(url):
     return {"kind": "link", "src": url, "original": url}
 
 
+def _youtube_id(url):
+    """Extract an 11-char YouTube id from any of its URL shapes, or None."""
+    if not url:
+        return None
+    m = re.search(r"(?:youtube\.com/(?:watch\?v=|embed/|shorts/)|youtu\.be/)([A-Za-z0-9_-]{11})", url)
+    if m:
+        return m.group(1)
+    if "youtube.com" in url.lower():
+        q = parse_qs(urlparse(url).query)
+        if q.get("v"):
+            return q["v"][0]
+    return None
+
+
+def _balanced_json_array(text, key):
+    """Return the JSON array that follows ``key`` in ``text`` (bracket-matched)."""
+    idx = text.find(key)
+    if idx == -1:
+        return None
+    start = text.find("[", idx)
+    if start == -1:
+        return None
+    depth = 0
+    for i in range(start, len(text)):
+        if text[i] == "[":
+            depth += 1
+        elif text[i] == "]":
+            depth -= 1
+            if depth == 0:
+                return text[start:i + 1]
+    return None
+
+
+def youtube_transcript(url, max_chars=14000):
+    """Best-effort fetch of a YouTube video's caption transcript as plain text.
+
+    Returns the transcript string, or None if the video has no captions or the
+    request is blocked (YouTube may refuse datacenter IPs). Stdlib only; every
+    failure is swallowed so callers can simply fall back to written material.
+    """
+    import html as _html
+    import json
+    import urllib.request
+
+    vid = _youtube_id(url)
+    if not vid:
+        return None
+    headers = {
+        "User-Agent": ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                       "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36"),
+        "Accept-Language": "en-US,en;q=0.9",
+        "Cookie": "CONSENT=YES+cb",  # skip the EU consent interstitial
+    }
+    try:
+        req = urllib.request.Request(
+            f"https://www.youtube.com/watch?v={vid}&hl=en", headers=headers)
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            page = resp.read().decode("utf-8", "replace")
+        raw = _balanced_json_array(page, '"captionTracks":')
+        if not raw:
+            return None
+        tracks = json.loads(raw)
+        if not tracks:
+            return None
+        # Prefer an English track; otherwise take the first available.
+        track = next((t for t in tracks
+                      if str(t.get("languageCode", "")).startswith("en")), tracks[0])
+        base_url = track.get("baseUrl")
+        if not base_url:
+            return None
+        creq = urllib.request.Request(base_url, headers=headers)
+        with urllib.request.urlopen(creq, timeout=20) as resp:
+            xml = resp.read().decode("utf-8", "replace")
+    except Exception as exc:
+        current_app.logger.warning("YouTube transcript fetch failed: %s", exc)
+        return None
+
+    parts = re.findall(r"<text[^>]*>(.*?)</text>", xml, re.DOTALL)
+    text = " ".join(_html.unescape(_html.unescape(p)).strip() for p in parts if p.strip())
+    text = re.sub(r"\s+", " ", text).strip()
+    return text[:max_chars] or None
+
+
 def current_user():
     uid = session.get("user_id")
     if uid is None:
@@ -881,12 +964,13 @@ def quiz_ai_enabled():
     return bool(current_app.config.get("ANTHROPIC_API_KEY"))
 
 
-def ai_generate_quiz(title, content, description=None, num_questions=5):
+def ai_generate_quiz(title, content, description=None, video_url=None, num_questions=5):
     """Generate a multiple-choice quiz from a training's material using Claude.
 
-    Returns a list of ``{"q": str, "options": [str, ...], "answer": int}`` dicts,
-    or ``None`` on any failure (no key, network, malformed response). ``answer``
-    is the index of the correct option.
+    Source material is the written content plus, when a YouTube video is
+    attached, its caption transcript. Returns a list of
+    ``{"q": str, "options": [str, ...], "answer": int}`` dicts, or ``None`` on
+    any failure (no key, no material, network, malformed response).
     """
     import json
     import urllib.error
@@ -896,7 +980,12 @@ def ai_generate_quiz(title, content, description=None, num_questions=5):
     api_key = cfg.get("ANTHROPIC_API_KEY")
     if not api_key:
         return None
-    material = "\n\n".join(p for p in (title, description, content) if p).strip()
+    parts = [title, description, content]
+    if video_url:
+        transcript = youtube_transcript(video_url)
+        if transcript:
+            parts.append("Video transcript:\n" + transcript)
+    material = "\n\n".join(p for p in parts if p).strip()
     if len(material) < 40:  # not enough to build a meaningful quiz
         return None
 

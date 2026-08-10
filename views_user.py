@@ -1294,8 +1294,12 @@ def team_quizzes():
                 n = len(json.loads(t["quiz_questions"]))
             except (ValueError, TypeError):
                 n = 0
-        has_material = bool((t["content"] or "").strip() or (t["description"] or "").strip())
-        view.append({"t": t, "quiz_id": t["quiz_id"], "questions": n, "has_material": has_material})
+        vid = parse_video(t["video_url"])
+        has_video = bool(vid and vid["kind"] == "youtube")
+        has_material = bool((t["content"] or "").strip() or (t["description"] or "").strip()
+                            or has_video)
+        view.append({"t": t, "quiz_id": t["quiz_id"], "questions": n,
+                     "has_material": has_material, "has_video": has_video})
     conn.close()
     return render_template("team_quizzes.html", trainings=view, ai_enabled=quiz_ai_enabled())
 
@@ -1315,7 +1319,7 @@ def generate_quiz(training_id):
         flash("Quiz generation needs an Anthropic API key (set ANTHROPIC_API_KEY).", "warning")
         return redirect(url_for("user.team_quizzes"))
 
-    questions = ai_generate_quiz(t["title"], t["content"], t["description"])
+    questions = ai_generate_quiz(t["title"], t["content"], t["description"], t["video_url"])
     if not questions:
         conn.close()
         flash("Couldn't generate a quiz from this training's material. Add more written "
