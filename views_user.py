@@ -1405,3 +1405,128 @@ def take_quiz(training_id):
     conn.close()
     return render_template("quiz.html", title=quiz["title"], questions=questions,
                            training_id=training_id, best=best)
+
+
+# ------------------------------------------ team-lead training authoring
+@bp.route("/team/trainings", methods=["GET", "POST"])
+@lead_or_admin_required
+def team_trainings():
+    """Team leads create trainings for their own team's roles and assign them."""
+    user = current_user()
+    conn = get_db()
+    team_roles = conn.execute(
+        "SELECT * FROM roles WHERE team_id = ? ORDER BY name", (user["team_id"],)
+    ).fetchall()
+    role_ids = {r["id"] for r in team_roles}
+
+    if request.method == "POST":
+        title = request.form.get("title", "").strip()
+        description = request.form.get("description", "").strip()
+        content = request.form.get("content", "").strip()
+        video_url = request.form.get("video_url", "").strip()
+        required = 1 if request.form.get("required") == "on" else 0
+        try:
+            role_id = int(request.form.get("role_id"))
+        except (TypeError, ValueError):
+            role_id = None
+        if not title:
+            flash("A title is required.", "danger")
+        elif role_id not in role_ids:
+            flash("Pick one of your team's roles for the training.", "danger")
+        else:
+            conn.execute(
+                "INSERT INTO trainings (title, description, content, video_url, role_id,"
+                " required, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (title, description, content, video_url, role_id, required, now_iso()),
+            )
+            conn.commit()
+            flash("Training created for your team.", "success")
+        conn.close()
+        return redirect(url_for("user.team_trainings"))
+
+    view = []
+    if role_ids:
+        ph = ",".join("?" for _ in role_ids)
+        rows = conn.execute(
+            f"SELECT t.*, r.name AS role_name FROM trainings t JOIN roles r ON r.id = t.role_id"
+            f" WHERE t.role_id IN ({ph}) ORDER BY t.title", list(role_ids),
+        ).fetchall()
+        for t in rows:
+            holders = conn.execute(
+                "SELECT COUNT(*) AS c FROM user_roles ur JOIN users u ON u.id = ur.user_id"
+                " WHERE ur.role_id = ? AND u.team_id = ?", (t["role_id"], user["team_id"]),
+            ).fetchone()["c"]
+            assigned = conn.execute(
+                "SELECT COUNT(*) AS c FROM user_training ut JOIN users u ON u.id = ut.user_id"
+                " WHERE ut.training_id = ? AND u.team_id = ?", (t["id"], user["team_id"]),
+            ).fetchone()["c"]
+            view.append({"t": t, "holders": holders, "assigned": assigned})
+    conn.close()
+    return render_template("team_trainings.html", team_roles=team_roles, trainings=view)
+
+
+def _team_role_training_or_redirect(actor, training_id, conn):
+    """Return the training if it belongs to one of the actor's team roles, else
+    close the connection and return None."""
+    t = conn.execute(
+        "SELECT t.*, r.team_id AS role_team FROM trainings t"
+        " JOIN roles r ON r.id = t.role_id WHERE t.id = ?", (training_id,),
+    ).fetchone()
+    if t is None or t["role_team"] != actor["team_id"]:
+        conn.close()
+        return None
+    return t
+
+
+@bp.route("/team/trainings/<int:training_id>/assign-all", methods=["POST"])
+@lead_or_admin_required
+def team_training_assign_all(training_id):
+    """Queue this training for every active team member who holds its role."""
+    actor = current_user()
+    conn = get_db()
+    t = _team_role_training_or_redirect(actor, training_id, conn)
+    if t is None:
+        flash("That training isn't for one of your team's roles.", "danger")
+        return redirect(url_for("user.team_trainings"))
+    holders = conn.execute(
+        "SELECT u.id FROM users u JOIN user_roles ur ON ur.user_id = u.id"
+        " WHERE ur.role_id = ? AND u.team_id = ? AND u.is_active = 1",
+        (t["role_id"], actor["team_id"]),
+    ).fetchall()
+    n = 0
+    for h in holders:
+        exists = conn.execute(
+            "SELECT 1 FROM user_training WHERE user_id = ? AND training_id = ?",
+            (h["id"], training_id),
+        ).fetchone()
+        if not exists:
+            conn.execute(
+                "INSERT INTO user_training (user_id, training_id, status, assigned_at)"
+                " VALUES (?, ?, 'assigned', ?)", (h["id"], training_id, now_iso()),
+            )
+            notify(conn, h["id"], f"New training assigned: {t['title']}.",
+                   url_for("user.training_detail", training_id=training_id))
+            n += 1
+    conn.commit()
+    conn.close()
+    if n:
+        flash(f"Assigned to {n} member{'s' if n != 1 else ''} who hold the role.", "success")
+    else:
+        flash("Everyone on your team with that role already has this training.", "info")
+    return redirect(url_for("user.team_trainings"))
+
+
+@bp.route("/team/trainings/<int:training_id>/delete", methods=["POST"])
+@lead_or_admin_required
+def team_training_delete(training_id):
+    actor = current_user()
+    conn = get_db()
+    t = _team_role_training_or_redirect(actor, training_id, conn)
+    if t is None:
+        flash("That training isn't for one of your team's roles.", "danger")
+        return redirect(url_for("user.team_trainings"))
+    conn.execute("DELETE FROM trainings WHERE id = ?", (training_id,))
+    conn.commit()
+    conn.close()
+    flash("Training deleted.", "info")
+    return redirect(url_for("user.team_trainings"))

@@ -37,6 +37,7 @@
       {% if current_user['team_lead'] %}
       <a href="{{ url_for('user.team') }}" class="{{ 'active' if request.endpoint in ['user.team','user.team_member'] }}">👥 My Team</a>
       <a href="{{ url_for('user.team_schedule') }}" class="{{ 'active' if request.endpoint in ['user.team_schedule','user.team_schedule_service'] }}">🗓️ Team Schedule</a>
+      <a href="{{ url_for('user.team_trainings') }}" class="{{ 'active' if request.endpoint == 'user.team_trainings' }}">📚 Team Training</a>
       <a href="{{ url_for('user.team_quizzes') }}" class="{{ 'active' if request.endpoint == 'user.team_quizzes' }}">🧠 Training Quizzes</a>
       {% endif %}
       <a href="{{ url_for('user.availability') }}" class="{{ 'active' if request.endpoint == 'user.availability' }}">📅 My Availability</a>

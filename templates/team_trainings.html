@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Team Training · HVGC LINEUP{% endblock %}
+{% block body %}
+<div class="page-head">
+  <div>
+    <h1>Team Training</h1>
+    <p>Create trainings for your team's roles and assign them to the members who serve those roles.</p>
+  </div>
+</div>
+
+{% if not team_roles %}
+<div class="card" style="border-color:var(--amber);">
+  <p style="margin:0;">Your team doesn't have any team-specific roles yet, so there's nothing to add
+  training for. Ask an administrator to set a role's <strong>Team</strong> to yours on the Roles page,
+  then you can create training for it here. (Trainings for shared, all-team roles stay with administrators.)</p>
+</div>
+{% else %}
+<div class="grid grid-2">
+  <div>
+    {% if trainings %}
+      {% for tv in trainings %}
+      <div class="card">
+        <div class="list-item" style="border:none;padding:0;">
+          <div>
+            <strong>{{ tv['t']['title'] }}</strong>
+            <span class="badge badge-gray">{{ tv['t']['role_name'] }}</span>
+            {% if tv['t']['required'] %}<span class="badge badge-amber">Required</span>{% endif %}<br>
+            <span class="meta">{{ tv['t']['description'] or '' }}</span>
+          </div>
+        </div>
+        <p class="muted" style="font-size:13px;margin:8px 0 0;">
+          {{ tv['assigned'] }} of {{ tv['holders'] }} team member{{ 's' if tv['holders'] != 1 }} with this role have it assigned.
+        </p>
+        <div class="row-actions" style="margin-top:10px;">
+          <form method="post" action="{{ url_for('user.team_training_assign_all', training_id=tv['t']['id']) }}" class="inline-form">
+            <button class="btn btn-sm btn-green">Assign to role holders</button>
+          </form>
+          <a href="{{ url_for('user.team_quizzes') }}" class="btn btn-sm btn-ghost">Make a quiz</a>
+          <form method="post" action="{{ url_for('user.team_training_delete', training_id=tv['t']['id']) }}" class="inline-form"
+                onsubmit="return confirm('Delete this training? It will be removed for everyone it was assigned to.');">
+            <button class="btn btn-sm btn-ghost">Delete</button>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="card"><div class="empty">No team trainings yet. Create one with the form.</div></div>
+    {% endif %}
+  </div>
+
+  <div class="card" style="align-self:start;">
+    <h3>+ New training</h3>
+    <form method="post">
+      <label for="role_id">For which team role?</label>
+      <select id="role_id" name="role_id" required>
+        {% for r in team_roles %}
+        <option value="{{ r['id'] }}">{{ r['name'] }}</option>
+        {% endfor %}
+      </select>
+      <label for="title">Title</label>
+      <input type="text" id="title" name="title" placeholder="e.g. Camera 101" required>
+      <label for="description">Short description</label>
+      <input type="text" id="description" name="description" placeholder="One line summary">
+      <label for="video_url">Video link <span class="muted">(optional — YouTube can also feed a quiz)</span></label>
+      <input type="url" id="video_url" name="video_url" placeholder="https://youtu.be/…">
+      <label for="content">Written content</label>
+      <textarea id="content" name="content" rows="5" placeholder="The training material volunteers read."></textarea>
+      <label class="check" style="margin-top:12px;">
+        <input type="checkbox" name="required" checked>
+        <span>Required to serve this role (must be completed before scheduling)</span>
+      </label>
+      <button class="btn" style="margin-top:14px;">Create training</button>
+    </form>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
