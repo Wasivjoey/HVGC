@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Staff {{ service['title'] }} · Team Schedule{% endblock %}
+{% block body %}
+<div class="page-head">
+  <div>
+    <h1>{{ service['title'] }}</h1>
+    <p>{{ service['service_date']|pretty_date }}{% if service['start_time'] %} · {{ service['start_time'] }}{% endif %}{% if service['location'] %} · {{ service['location'] }}{% endif %}</p>
+  </div>
+  <a href="{{ url_for('user.team_schedule') }}" class="btn btn-ghost">← All services</a>
+</div>
+
+<div class="card">
+  <h3>Current roster ({{ roster|length }})</h3>
+  {% if roster %}
+    {% for a in roster %}
+    <div class="list-item">
+      <div><strong>{{ a['role_name'] }}</strong> — {{ a['user_name'] }}
+        {% if a['team_id'] != my_team_id %}<span class="badge badge-gray" title="On another team">other team</span>{% endif %}
+        {% if a['status'] == 'confirmed' %}<span class="badge badge-green">Confirmed</span>
+        {% elif a['status'] == 'declined' %}<span class="badge badge-red">Declined</span>
+        {% else %}<span class="badge badge-amber">Scheduled</span>{% endif %}
+      </div>
+      {% if a['team_id'] == my_team_id %}
+      <form method="post" action="{{ url_for('user.team_unassign', assignment_id=a['id']) }}" class="inline-form">
+        <button class="btn btn-sm btn-ghost">Remove</button>
+      </form>
+      {% endif %}
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="empty">No one scheduled yet. Assign your team members from the roles below.</div>
+  {% endif %}
+</div>
+
+<h2>Assign by role</h2>
+<p class="muted" style="margin-top:-6px;">
+  <span class="dot dot-green"></span> available &nbsp;
+  <span class="dot dot-red"></span> unavailable &nbsp;
+  <span class="dot dot-gray"></span> not marked &nbsp;·&nbsp;
+  Only <strong>qualified</strong> members of your team are shown.
+</p>
+
+<div class="grid grid-2">
+  {% for rb in role_board %}
+  <div class="card">
+    <h3>{{ rb['role']['name'] }}</h3>
+    {% if rb['candidates'] %}
+      {% for c in rb['candidates'] %}
+      <div class="list-item">
+        <div>
+          {% if c['availability'] == 'available' %}<span class="dot dot-green"></span>
+          {% elif c['availability'] == 'unavailable' %}<span class="dot dot-red"></span>
+          {% else %}<span class="dot dot-gray"></span>{% endif %}
+          {{ c['u']['name'] }}
+          {% if c['qualified'] %}<span class="badge badge-green">Qualified</span>
+          {% else %}<span class="badge badge-amber">Not trained</span>{% endif %}
+        </div>
+        <div>
+          {% if c['already'] %}
+            <span class="badge badge-blue">Assigned</span>
+          {% elif c['busy_role'] %}
+            <span class="badge badge-gray" title="Already serving this service">Serving as {{ c['busy_role'] }}</span>
+          {% elif not c['qualified'] %}
+            <span class="badge badge-gray" title="Finish required training first">Not eligible</span>
+          {% else %}
+            <form method="post" action="{{ url_for('user.team_assign', service_id=service['id']) }}" class="inline-form">
+              <input type="hidden" name="user_id" value="{{ c['u']['id'] }}">
+              <input type="hidden" name="role_id" value="{{ rb['role']['id'] }}">
+              <button class="btn btn-sm btn-green">Assign</button>
+            </form>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty">No one on your team holds this role yet.</div>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

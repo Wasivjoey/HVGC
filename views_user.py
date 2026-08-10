@@ -17,6 +17,7 @@ from helpers import (
     login_required, current_user, role_training_status, is_qualified, parse_video,
     save_avatar, get_announcements, get_polls, poll_is_open,
     build_ics, build_ics_feed, lead_or_admin_required, can_manage_member, notify,
+    notify_assignment,
 )
 
 bp = Blueprint("user", __name__)
@@ -1100,3 +1101,157 @@ def team_member_reset_password(user_id):
     flash(f"Password reset for {m['name']}. Temporary password: {temp} — they'll be asked "
           "to change it at next sign-in.", "success")
     return redirect(url_for("user.team_member", user_id=user_id))
+
+
+# ------------------------------------------------- team-lead scheduling
+@bp.route("/team/schedule")
+@lead_or_admin_required
+def team_schedule():
+    """Upcoming services a team lead can staff from their own team."""
+    user = current_user()
+    conn = get_db()
+    today = date.today().isoformat()
+    services = conn.execute(
+        "SELECT s.*, (SELECT COUNT(*) FROM assignments a JOIN users u ON u.id = a.user_id"
+        "  WHERE a.service_id = s.id AND u.team_id = ?) AS team_slots"
+        " FROM services s WHERE s.service_date >= ? ORDER BY s.service_date, s.start_time",
+        (user["team_id"], today),
+    ).fetchall()
+    team = conn.execute("SELECT * FROM teams WHERE id = ?", (user["team_id"],)).fetchone()
+    conn.close()
+    return render_template("team_schedule.html", services=services, team=team)
+
+
+@bp.route("/team/schedule/<int:service_id>")
+@lead_or_admin_required
+def team_schedule_service(service_id):
+    """Board for staffing one service with this lead's own team members."""
+    user = current_user()
+    conn = get_db()
+    service = conn.execute("SELECT * FROM services WHERE id = ?", (service_id,)).fetchone()
+    if service is None:
+        conn.close()
+        flash("Service not found.", "danger")
+        return redirect(url_for("user.team_schedule"))
+
+    # Everyone already serving this service (any team) — shown for context, and
+    # used to enforce one-role-per-service.
+    roster = conn.execute(
+        "SELECT a.*, u.name AS user_name, u.team_id, r.name AS role_name"
+        " FROM assignments a JOIN users u ON u.id = a.user_id"
+        " JOIN roles r ON r.id = a.role_id WHERE a.service_id = ? ORDER BY r.name, u.name",
+        (service_id,),
+    ).fetchall()
+    assigned_pairs = {(a["user_id"], a["role_id"]) for a in roster}
+    serving_role = {a["user_id"]: a["role_name"] for a in roster}
+
+    avail_map = {
+        a["user_id"]: a for a in conn.execute(
+            "SELECT user_id, status FROM availability WHERE day = ?",
+            (service["service_date"],),
+        ).fetchall()
+    }
+    # Roles available to this team (global + team-specific).
+    roles = conn.execute(
+        "SELECT * FROM roles WHERE team_id IS NULL OR team_id = ? ORDER BY name",
+        (user["team_id"],),
+    ).fetchall()
+    role_board = []
+    for r in roles:
+        candidates = conn.execute(
+            "SELECT u.* FROM users u JOIN user_roles ur ON ur.user_id = u.id"
+            " WHERE ur.role_id = ? AND u.is_active = 1 AND u.team_id = ? ORDER BY u.name",
+            (r["id"], user["team_id"]),
+        ).fetchall()
+        cand_view = []
+        for c in candidates:
+            av = avail_map.get(c["id"])
+            already = (c["id"], r["id"]) in assigned_pairs
+            cand_view.append({
+                "u": c,
+                "qualified": is_qualified(conn, c["id"], r["id"]),
+                "availability": av["status"] if av else None,
+                "already": already,
+                "busy_role": serving_role.get(c["id"]) if not already else None,
+                "manage": can_manage_member(user, c),
+            })
+        role_board.append({"role": r, "candidates": cand_view})
+    conn.close()
+    return render_template("team_schedule_service.html", service=service,
+                           roster=roster, role_board=role_board, my_team_id=user["team_id"])
+
+
+@bp.route("/team/schedule/<int:service_id>/assign", methods=["POST"])
+@lead_or_admin_required
+def team_assign(service_id):
+    actor = current_user()
+    conn = get_db()
+    user_id = int(request.form.get("user_id"))
+    role_id = int(request.form.get("role_id"))
+    target = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+    # A lead may only schedule their own manageable team members.
+    if not can_manage_member(actor, target):
+        conn.close()
+        flash("You can only schedule members of your own team.", "danger")
+        return redirect(url_for("user.team_schedule_service", service_id=service_id))
+    # Role must be one available to the team.
+    role = conn.execute(
+        "SELECT * FROM roles WHERE id = ? AND (team_id IS NULL OR team_id = ?)",
+        (role_id, actor["team_id"]),
+    ).fetchone()
+    if role is None:
+        conn.close()
+        flash("That role isn't available to your team.", "danger")
+        return redirect(url_for("user.team_schedule_service", service_id=service_id))
+    if not is_qualified(conn, user_id, role_id):
+        conn.close()
+        flash("That person isn't qualified for this role yet (training incomplete).", "warning")
+        return redirect(url_for("user.team_schedule_service", service_id=service_id))
+    existing = conn.execute(
+        "SELECT r.name FROM assignments a JOIN roles r ON r.id = a.role_id"
+        " WHERE a.service_id = ? AND a.user_id = ?", (service_id, user_id),
+    ).fetchone()
+    if existing:
+        conn.close()
+        flash(f"{target['name']} is already serving as {existing['name']} for this service.",
+              "warning")
+        return redirect(url_for("user.team_schedule_service", service_id=service_id))
+    conn.execute(
+        "INSERT OR IGNORE INTO assignments (service_id, user_id, role_id, status, created_at)"
+        " VALUES (?, ?, ?, 'scheduled', ?)", (service_id, user_id, role_id, now_iso()),
+    )
+    notify_assignment(conn, service_id, user_id, role_id)
+    conn.commit()
+    conn.close()
+    flash("Assigned.", "success")
+    return redirect(url_for("user.team_schedule_service", service_id=service_id))
+
+
+@bp.route("/team/assignments/<int:assignment_id>/unassign", methods=["POST"])
+@lead_or_admin_required
+def team_unassign(assignment_id):
+    actor = current_user()
+    conn = get_db()
+    a = conn.execute(
+        "SELECT a.service_id, a.user_id, s.title AS service_title, s.service_date,"
+        " r.name AS role_name FROM assignments a JOIN services s ON s.id = a.service_id"
+        " JOIN roles r ON r.id = a.role_id WHERE a.id = ?", (assignment_id,),
+    ).fetchone()
+    if a is None:
+        conn.close()
+        flash("Assignment not found.", "danger")
+        return redirect(url_for("user.team_schedule"))
+    target = conn.execute("SELECT * FROM users WHERE id = ?", (a["user_id"],)).fetchone()
+    if not can_manage_member(actor, target):
+        conn.close()
+        flash("You can only remove members of your own team.", "danger")
+        return redirect(url_for("user.team_schedule_service", service_id=a["service_id"]))
+    conn.execute("DELETE FROM assignments WHERE id = ?", (assignment_id,))
+    notify(conn, a["user_id"],
+           f"You were removed from {a['service_title']} on {a['service_date']} "
+           f"({a['role_name']}).", url_for("user.services"))
+    conn.commit()
+    service_id = a["service_id"]
+    conn.close()
+    flash("Removed from schedule.", "info")
+    return redirect(url_for("user.team_schedule_service", service_id=service_id))

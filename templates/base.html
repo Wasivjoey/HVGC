@@ -36,6 +36,7 @@
       <a href="{{ url_for('user.calendar') }}" class="{{ 'active' if request.endpoint == 'user.calendar' }}">📆 Team Calendar</a>
       {% if current_user['team_lead'] %}
       <a href="{{ url_for('user.team') }}" class="{{ 'active' if request.endpoint in ['user.team','user.team_member'] }}">👥 My Team</a>
+      <a href="{{ url_for('user.team_schedule') }}" class="{{ 'active' if request.endpoint in ['user.team_schedule','user.team_schedule_service'] }}">🗓️ Team Schedule</a>
       {% endif %}
       <a href="{{ url_for('user.availability') }}" class="{{ 'active' if request.endpoint == 'user.availability' }}">📅 My Availability</a>
       <a href="{{ url_for('user.services') }}" class="{{ 'active' if request.endpoint in ['user.services','user.service_detail'] }}">⛪ Services</a>

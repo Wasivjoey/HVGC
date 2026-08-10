@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Team Schedule · HVGC LINEUP{% endblock %}
+{% block body %}
+<div class="page-head">
+  <div>
+    <h1>Team Schedule</h1>
+    <p>Staff upcoming services with members of {% if team %}<strong>{{ team['name'] }}</strong>{% else %}your team{% endif %}.</p>
+  </div>
+  <a href="{{ url_for('user.team') }}" class="btn btn-ghost">👥 My Team</a>
+</div>
+
+<div class="card table-card">
+  {% if services %}
+  <table>
+    <thead><tr><th>Service</th><th>Date</th><th>From your team</th><th></th></tr></thead>
+    <tbody>
+    {% for s in services %}
+      <tr>
+        <td><strong>{{ s['title'] }}</strong>{% if s['location'] %}<br><span class="muted" style="font-size:12px;">{{ s['location'] }}</span>{% endif %}</td>
+        <td>{{ s['service_date']|pretty_date }}{% if s['start_time'] %} · {{ s['start_time'] }}{% endif %}</td>
+        <td><span class="badge badge-gray">{{ s['team_slots'] }} assigned</span></td>
+        <td class="row-actions">
+          <a href="{{ url_for('user.team_schedule_service', service_id=s['id']) }}" class="btn btn-sm">Staff this service</a>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty">No upcoming services yet. An administrator schedules services.</div>
+  {% endif %}
+</div>
+{% endblock %}
