@@ -57,16 +57,23 @@ services:
       #
       # Alternative: classic SMTP (needs a PAID Render instance — SMTP ports are
       # blocked on free web services). Leave BREVO_API_KEY unset to use this.
+      #
+      # Gmail example: SMTP_USER is your full Gmail address and SMTP_PASSWORD is
+      # a Google *App Password* (16 chars, needs 2-Step Verification on) — NOT
+      # your normal password. SMTP_FROM must equal the Gmail address (or a
+      # "Send mail as" alias you've verified). ~500 emails/day limit.
       # - key: SMTP_HOST
-      #   value: smtp.example.com
+      #   value: smtp.gmail.com
       # - key: SMTP_PORT
-      #   value: "587"
+      #   value: "587"          # STARTTLS. Use "465" for implicit SSL.
       # - key: SMTP_USER
-      #   value: your-smtp-user
+      #   value: yourname@gmail.com
       # - key: SMTP_PASSWORD
-      #   sync: false        # set as a secret in the dashboard
+      #   sync: false           # the App Password — set as a secret in the dashboard
       # - key: SMTP_FROM
-      #   value: no-reply@yourchurch.org
+      #   value: yourname@gmail.com
+      # - key: EMAIL_FROM_NAME
+      #   value: HVGC LINEUP
 
       # ---- Optional AI auto-scheduler ----
       # Set an Anthropic API key to enable the "Use AI assistant" option when
