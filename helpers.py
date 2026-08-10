@@ -874,3 +874,73 @@ def auto_schedule_plan(conn, service, role_ids, use_ai=False):
     assignments = [(rid, chosen[rid]) for rid in role_ids if rid in chosen]
     unfilled = [rid for rid in role_ids if rid not in chosen]
     return assignments, unfilled, method
+
+
+# ----------------------------------------------------------------- quiz gen
+def quiz_ai_enabled():
+    return bool(current_app.config.get("ANTHROPIC_API_KEY"))
+
+
+def ai_generate_quiz(title, content, description=None, num_questions=5):
+    """Generate a multiple-choice quiz from a training's material using Claude.
+
+    Returns a list of ``{"q": str, "options": [str, ...], "answer": int}`` dicts,
+    or ``None`` on any failure (no key, network, malformed response). ``answer``
+    is the index of the correct option.
+    """
+    import json
+    import urllib.error
+    import urllib.request
+
+    cfg = current_app.config
+    api_key = cfg.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        return None
+    material = "\n\n".join(p for p in (title, description, content) if p).strip()
+    if len(material) < 40:  # not enough to build a meaningful quiz
+        return None
+
+    instructions = (
+        f"You are writing a short quiz to check a volunteer's understanding of the "
+        f"training below. Write {num_questions} multiple-choice questions, each with "
+        "exactly 4 options and one correct answer. Base every question ONLY on the "
+        "training material — do not invent facts. Respond with ONLY a JSON object of "
+        "the form {\"questions\": [{\"q\": \"...\", \"options\": [\"a\",\"b\",\"c\",\"d\"], "
+        "\"answer\": <index 0-3 of the correct option>}]}. No prose, no markdown."
+    )
+    body = json.dumps({
+        "model": cfg.get("AUTOSCHEDULE_MODEL", "claude-sonnet-5"),
+        "max_tokens": 2048,
+        "messages": [{"role": "user",
+                      "content": instructions + "\n\nTRAINING MATERIAL:\n" + material}],
+    }).encode("utf-8")
+    req = urllib.request.Request(
+        "https://api.anthropic.com/v1/messages", data=body,
+        headers={"x-api-key": api_key, "anthropic-version": "2023-06-01",
+                 "content-type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=45) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+        text = "".join(b.get("text", "") for b in data.get("content", [])
+                       if b.get("type") == "text").strip()
+        start, end = text.find("{"), text.rfind("}")
+        if start == -1 or end == -1:
+            return None
+        parsed = json.loads(text[start:end + 1])
+    except Exception as exc:
+        current_app.logger.warning("Quiz generation failed: %s", exc)
+        return None
+
+    questions = []
+    for item in parsed.get("questions", []):
+        try:
+            q = str(item["q"]).strip()
+            options = [str(o).strip() for o in item["options"] if str(o).strip()]
+            answer = int(item["answer"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if q and 2 <= len(options) and 0 <= answer < len(options):
+            questions.append({"q": q, "options": options, "answer": answer})
+    return questions or None

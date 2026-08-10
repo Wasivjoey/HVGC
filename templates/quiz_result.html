@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Quiz result · {{ title }}{% endblock %}
+{% block body %}
+{% set pct = (score / total * 100) | round(0, 'floor') | int if total else 0 %}
+<div class="page-head">
+  <div>
+    <h1>Quiz result</h1>
+    <p>{{ title }}</p>
+  </div>
+  <a href="{{ url_for('user.training_detail', training_id=training_id) }}" class="btn btn-ghost">← Back to training</a>
+</div>
+
+<div class="card" style="text-align:center;">
+  <div style="font-size:40px;font-weight:800;color:{{ 'var(--green)' if pct >= 80 else ('var(--amber)' if pct >= 50 else 'var(--red)') }};">
+    {{ score }}/{{ total }}
+  </div>
+  <p class="muted" style="margin:4px 0 0;">
+    {% if pct >= 80 %}Great work! 🎉{% elif pct >= 50 %}Not bad — review the ones you missed.{% else %}Worth another look at the material.{% endif %}
+  </p>
+</div>
+
+{% for r in results %}
+<div class="card">
+  <h3 style="margin-top:0;">{{ loop.index }}. {{ r['q']['q'] }}
+    {% if r['correct'] %}<span class="badge badge-green">Correct</span>{% else %}<span class="badge badge-red">Incorrect</span>{% endif %}
+  </h3>
+  {% for opt in r['q']['options'] %}
+  {% set oi = loop.index0 %}
+  <div class="quiz-opt quiz-opt-static
+      {{ 'quiz-right' if oi == r['q']['answer'] else '' }}
+      {{ 'quiz-wrong' if (oi == r['picked'] and oi != r['q']['answer']) else '' }}">
+    <span>
+      {% if oi == r['q']['answer'] %}✓{% elif oi == r['picked'] %}✗{% else %}•{% endif %}
+      {{ opt }}
+      {% if oi == r['picked'] and oi != r['q']['answer'] %}<span class="muted">(your answer)</span>{% endif %}
+    </span>
+  </div>
+  {% endfor %}
+</div>
+{% endfor %}
+
+<a href="{{ url_for('user.take_quiz', training_id=training_id) }}" class="btn">Retake the quiz</a>
+{% endblock %}

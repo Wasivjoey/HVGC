@@ -100,6 +100,26 @@ CREATE TABLE IF NOT EXISTS user_training (
     UNIQUE(user_id, training_id)
 );
 
+-- A quiz generated from a training's material. One quiz per training; the
+-- questions are stored as JSON: [{"q": ..., "options": [...], "answer": idx}].
+CREATE TABLE IF NOT EXISTS quizzes (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    training_id INTEGER NOT NULL UNIQUE REFERENCES trainings(id) ON DELETE CASCADE,
+    questions   TEXT NOT NULL,
+    created_by  INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at  TEXT NOT NULL
+);
+
+-- A volunteer's attempt at a quiz (unlocked once the training is completed).
+CREATE TABLE IF NOT EXISTS quiz_attempts (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    quiz_id    INTEGER NOT NULL REFERENCES quizzes(id) ON DELETE CASCADE,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    score      INTEGER NOT NULL,
+    total      INTEGER NOT NULL,
+    created_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS services (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
     title        TEXT NOT NULL,

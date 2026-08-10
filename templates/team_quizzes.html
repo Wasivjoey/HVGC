@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Training Quizzes · HVGC LINEUP{% endblock %}
+{% block body %}
+<div class="page-head">
+  <div>
+    <h1>Training Quizzes</h1>
+    <p>Generate a quiz from each training's material. Volunteers get it once they've completed the training.</p>
+  </div>
+</div>
+
+{% if not ai_enabled %}
+<div class="card" style="border-color:var(--amber);">
+  <p style="margin:0;">⚠️ Quiz generation needs an Anthropic API key. Ask an administrator to set
+  <code>ANTHROPIC_API_KEY</code> in the app's environment, then the <strong>Generate</strong> buttons below will work.</p>
+</div>
+{% endif %}
+
+<div class="card table-card">
+  <table>
+    <thead><tr><th>Training</th><th>Role</th><th>Quiz</th><th></th></tr></thead>
+    <tbody>
+    {% for tv in trainings %}
+      <tr>
+        <td><strong>{{ tv['t']['title'] }}</strong></td>
+        <td>{% if tv['t']['role_name'] %}<span class="badge badge-gray">{{ tv['t']['role_name'] }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+        <td>
+          {% if tv['questions'] %}<span class="badge badge-green">{{ tv['questions'] }} questions</span>
+          {% else %}<span class="muted">None yet</span>{% endif %}
+        </td>
+        <td class="row-actions">
+          {% if tv['has_material'] %}
+          <form method="post" action="{{ url_for('user.generate_quiz', training_id=tv['t']['id']) }}" class="inline-form">
+            <button class="btn btn-sm" {{ 'disabled' if not ai_enabled }}>{{ 'Regenerate' if tv['quiz_id'] else 'Generate quiz' }}</button>
+          </form>
+          {% else %}
+          <span class="muted" style="font-size:12px;" title="Add written content to this training first">No material to build from</span>
+          {% endif %}
+          {% if tv['quiz_id'] %}
+          <form method="post" action="{{ url_for('user.delete_quiz', training_id=tv['t']['id']) }}" class="inline-form"
+                onsubmit="return confirm('Delete this quiz?');">
+            <button class="btn btn-sm btn-ghost">Delete</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -65,6 +65,20 @@
 <p class="muted">You've completed this training. Nice work!</p>
 {% endif %}
 
+{% if has_quiz %}
+<div class="card" style="margin-top:16px;">
+  <h3>🧠 Knowledge check</h3>
+  {% if t['status'] == 'completed' %}
+    <p class="muted" style="font-size:14px;margin-top:0;">A {{ quiz_len }}-question quiz is available for this training.
+      {% if quiz_best and quiz_best['s'] is not none %}<br>Your best score: <strong>{{ quiz_best['s'] }}/{{ quiz_best['total'] }}</strong>.{% endif %}
+    </p>
+    <a href="{{ url_for('user.take_quiz', training_id=t['training_id']) }}" class="btn">{{ 'Retake the quiz' if (quiz_best and quiz_best['s'] is not none) else 'Take the quiz' }}</a>
+  {% else %}
+    <p class="muted" style="font-size:14px;margin:0;">🔒 A quiz unlocks here once you mark this training complete.</p>
+  {% endif %}
+</div>
+{% endif %}
+
 {% if playable %}
 <script>
 (function () {

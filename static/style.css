@@ -314,6 +314,13 @@ details.inline-edit[open] { margin-top: 10px; }
 .role-check-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; margin-top: 10px; }
 .role-check { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--line, #e3e7ef); border-radius: 8px; cursor: pointer; font-size: 14px; }
 .role-check input { width: auto; margin: 0; }
+.quiz-opt { display: flex; align-items: center; gap: 10px; padding: 10px 12px; margin-top: 8px; border: 1px solid var(--line); border-radius: 9px; cursor: pointer; font-size: 15px; }
+.quiz-opt:hover { background: #f7f8fc; }
+.quiz-opt input { width: auto; margin: 0; }
+.quiz-opt-static { cursor: default; }
+.quiz-opt-static:hover { background: transparent; }
+.quiz-right { border-color: var(--green); background: var(--green-bg); }
+.quiz-wrong { border-color: var(--red); background: var(--red-bg); }
 
 /* people bulk actions */
 .bulk-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }

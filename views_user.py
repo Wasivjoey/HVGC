@@ -2,6 +2,7 @@
 
 from datetime import date, timedelta
 
+import json
 import os
 import secrets
 
@@ -17,7 +18,7 @@ from helpers import (
     login_required, current_user, role_training_status, is_qualified, parse_video,
     save_avatar, get_announcements, get_polls, poll_is_open,
     build_ics, build_ics_feed, lead_or_admin_required, can_manage_member, notify,
-    notify_assignment,
+    notify_assignment, ai_generate_quiz, quiz_ai_enabled,
 )
 
 bp = Blueprint("user", __name__)
@@ -719,12 +720,27 @@ def training_detail(training_id):
         " WHERE ut.user_id = ? AND ut.training_id = ?",
         (user["id"], training_id),
     ).fetchone()
+    quiz = conn.execute(
+        "SELECT id, questions FROM quizzes WHERE training_id = ?", (training_id,)
+    ).fetchone()
+    quiz_len, best = 0, None
+    if quiz:
+        try:
+            quiz_len = len(json.loads(quiz["questions"]))
+        except (ValueError, TypeError):
+            quiz_len = 0
+        best = conn.execute(
+            "SELECT MAX(score) AS s, total FROM quiz_attempts WHERE quiz_id = ? AND user_id = ?",
+            (quiz["id"], user["id"]),
+        ).fetchone()
     conn.close()
     if row is None:
         flash("That training has not been assigned to you.", "warning")
         return redirect(url_for("user.trainings"))
     video = parse_video(row["video_url"])
-    return render_template("training_detail.html", t=row, video=video)
+    return render_template("training_detail.html", t=row, video=video,
+                           has_quiz=bool(quiz) and quiz_len > 0, quiz_len=quiz_len,
+                           quiz_best=best)
 
 
 @bp.route("/trainings/<int:training_id>/video-complete", methods=["POST"])
@@ -1255,3 +1271,133 @@ def team_unassign(assignment_id):
     conn.close()
     flash("Removed from schedule.", "info")
     return redirect(url_for("user.team_schedule_service", service_id=service_id))
+
+
+# ---------------------------------------------- team-lead training quizzes
+@bp.route("/team/quizzes")
+@lead_or_admin_required
+def team_quizzes():
+    """Team leads generate quizzes from training material. Volunteers get the
+    quiz once they've completed that training."""
+    conn = get_db()
+    trainings = conn.execute(
+        "SELECT t.*, r.name AS role_name,"
+        " (SELECT id FROM quizzes q WHERE q.training_id = t.id) AS quiz_id,"
+        " (SELECT questions FROM quizzes q WHERE q.training_id = t.id) AS quiz_questions"
+        " FROM trainings t LEFT JOIN roles r ON r.id = t.role_id ORDER BY t.title"
+    ).fetchall()
+    view = []
+    for t in trainings:
+        n = 0
+        if t["quiz_questions"]:
+            try:
+                n = len(json.loads(t["quiz_questions"]))
+            except (ValueError, TypeError):
+                n = 0
+        has_material = bool((t["content"] or "").strip() or (t["description"] or "").strip())
+        view.append({"t": t, "quiz_id": t["quiz_id"], "questions": n, "has_material": has_material})
+    conn.close()
+    return render_template("team_quizzes.html", trainings=view, ai_enabled=quiz_ai_enabled())
+
+
+@bp.route("/team/quizzes/<int:training_id>/generate", methods=["POST"])
+@lead_or_admin_required
+def generate_quiz(training_id):
+    actor = current_user()
+    conn = get_db()
+    t = conn.execute("SELECT * FROM trainings WHERE id = ?", (training_id,)).fetchone()
+    if t is None:
+        conn.close()
+        flash("Training not found.", "danger")
+        return redirect(url_for("user.team_quizzes"))
+    if not quiz_ai_enabled():
+        conn.close()
+        flash("Quiz generation needs an Anthropic API key (set ANTHROPIC_API_KEY).", "warning")
+        return redirect(url_for("user.team_quizzes"))
+
+    questions = ai_generate_quiz(t["title"], t["content"], t["description"])
+    if not questions:
+        conn.close()
+        flash("Couldn't generate a quiz from this training's material. Add more written "
+              "content to the training and try again.", "warning")
+        return redirect(url_for("user.team_quizzes"))
+
+    payload = json.dumps(questions)
+    existing = conn.execute("SELECT id FROM quizzes WHERE training_id = ?", (training_id,)).fetchone()
+    if existing:
+        conn.execute("UPDATE quizzes SET questions = ?, created_by = ?, created_at = ? WHERE id = ?",
+                     (payload, actor["id"], now_iso(), existing["id"]))
+    else:
+        conn.execute("INSERT INTO quizzes (training_id, questions, created_by, created_at)"
+                     " VALUES (?, ?, ?, ?)", (training_id, payload, actor["id"], now_iso()))
+    conn.commit()
+    conn.close()
+    flash(f"Quiz ready — {len(questions)} question{'s' if len(questions) != 1 else ''} "
+          "generated. Volunteers can take it once they complete the training.", "success")
+    return redirect(url_for("user.team_quizzes"))
+
+
+@bp.route("/team/quizzes/<int:training_id>/delete", methods=["POST"])
+@lead_or_admin_required
+def delete_quiz(training_id):
+    conn = get_db()
+    conn.execute("DELETE FROM quizzes WHERE training_id = ?", (training_id,))
+    conn.commit()
+    conn.close()
+    flash("Quiz removed.", "info")
+    return redirect(url_for("user.team_quizzes"))
+
+
+@bp.route("/trainings/<int:training_id>/quiz", methods=["GET", "POST"])
+@login_required
+def take_quiz(training_id):
+    """Volunteers take the quiz — only after completing the training."""
+    user = current_user()
+    conn = get_db()
+    ut = conn.execute(
+        "SELECT status FROM user_training WHERE user_id = ? AND training_id = ?",
+        (user["id"], training_id),
+    ).fetchone()
+    quiz = conn.execute(
+        "SELECT q.*, t.title FROM quizzes q JOIN trainings t ON t.id = q.training_id"
+        " WHERE q.training_id = ?", (training_id,),
+    ).fetchone()
+    if quiz is None:
+        conn.close()
+        flash("There's no quiz for this training yet.", "info")
+        return redirect(url_for("user.training_detail", training_id=training_id))
+    if ut is None or ut["status"] != "completed":
+        conn.close()
+        flash("Finish the training first — the quiz unlocks once it's complete.", "warning")
+        return redirect(url_for("user.training_detail", training_id=training_id))
+
+    questions = json.loads(quiz["questions"])
+    if request.method == "POST":
+        correct = 0
+        results = []
+        for i, q in enumerate(questions):
+            try:
+                picked = int(request.form.get(f"q{i}", "-1"))
+            except ValueError:
+                picked = -1
+            is_right = picked == q["answer"]
+            correct += 1 if is_right else 0
+            results.append({"q": q, "picked": picked, "correct": is_right})
+        conn.execute(
+            "INSERT INTO quiz_attempts (quiz_id, user_id, score, total, created_at)"
+            " VALUES (?, ?, ?, ?, ?)",
+            (quiz["id"], user["id"], correct, len(questions), now_iso()),
+        )
+        conn.commit()
+        conn.close()
+        return render_template("quiz_result.html", title=quiz["title"], results=results,
+                               score=correct, total=len(questions), training_id=training_id)
+
+    # Best prior attempt, for context.
+    best = conn.execute(
+        "SELECT MAX(score) AS s, total FROM quiz_attempts WHERE quiz_id = ? AND user_id = ?",
+        (quiz["id"], user["id"]),
+    ).fetchone()
+    conn.close()
+    return render_template("quiz.html", title=quiz["title"], questions=questions,
+                           training_id=training_id, best=best)

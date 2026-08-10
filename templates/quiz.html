@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Quiz · {{ title }}{% endblock %}
+{% block body %}
+<div class="page-head">
+  <div>
+    <h1>🧠 {{ title }} — quiz</h1>
+    <p>Answer each question, then submit to see your score.
+      {% if best and best['s'] is not none %} Your best so far: <strong>{{ best['s'] }}/{{ best['total'] }}</strong>.{% endif %}</p>
+  </div>
+  <a href="{{ url_for('user.training_detail', training_id=training_id) }}" class="btn btn-ghost">← Back to training</a>
+</div>
+
+<form method="post">
+  {% for q in questions %}
+  {% set qi = loop.index0 %}
+  <div class="card">
+    <h3 style="margin-top:0;">{{ loop.index }}. {{ q['q'] }}</h3>
+    {% for opt in q['options'] %}
+    <label class="quiz-opt">
+      <input type="radio" name="q{{ qi }}" value="{{ loop.index0 }}" required>
+      <span>{{ opt }}</span>
+    </label>
+    {% endfor %}
+  </div>
+  {% endfor %}
+  <button class="btn btn-green" style="margin-top:6px;">Submit answers</button>
+</form>
+{% endblock %}
