@@ -6,6 +6,12 @@
     <h1>Trainings</h1>
     <p>Build the training volunteers must complete before serving in a role.</p>
   </div>
+  {% if outstanding_people %}
+  <form method="post" action="{{ url_for('admin.remind_trainings') }}"
+        onsubmit="return confirm('Email a reminder to everyone with outstanding training?');">
+    <button class="btn">🔔 Remind {{ outstanding_people }} with outstanding training</button>
+  </form>
+  {% endif %}
 </div>
 
 <div class="grid grid-2">

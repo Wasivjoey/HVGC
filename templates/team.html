@@ -6,6 +6,10 @@
     <h1>{% if team %}<span class="team-swatch" style="background:{{ team_color(team['id']) }}"></span>{% endif %}{{ team['name'] if team else 'My Team' }}</h1>
     <p>Manage the members of your team — assign roles &amp; training, and reset passwords.</p>
   </div>
+  <form method="post" action="{{ url_for('user.team_remind_trainings') }}"
+        onsubmit="return confirm('Email a training reminder to every team member who has outstanding training?');">
+    <button class="btn btn-ghost">🔔 Remind outstanding training</button>
+  </form>
 </div>
 
 <div class="card table-card">

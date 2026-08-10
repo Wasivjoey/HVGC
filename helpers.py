@@ -423,7 +423,8 @@ ADMIN_ENDPOINT_FEATURE = {
     "admin.update_user_flags": "admins", "admin.set_admin_access": "admins",
     "admin.roles": "roles", "admin.edit_role": "roles", "admin.delete_role": "roles",
     "admin.trainings": "trainings", "admin.edit_training": "trainings",
-    "admin.delete_training": "trainings",
+    "admin.delete_training": "trainings", "admin.remind_trainings": "trainings",
+    "admin.remind_user_training": "people",
     "admin.services": "services", "admin.edit_service": "services",
     "admin.remove_service_document": "services", "admin.delete_service": "services",
     "admin.schedule": "services", "admin.assign": "services", "admin.unassign": "services",
@@ -554,6 +555,26 @@ def is_qualified(conn, user_id, role_id):
         return False
     required, completed = role_training_status(conn, user_id, role_id)
     return completed >= required
+
+
+def send_training_reminder(conn, user_id):
+    """Remind a user of their outstanding (assigned, not completed) trainings —
+    in-app + email. Returns the count of outstanding trainings (0 = nothing
+    sent). Caller commits."""
+    items = conn.execute(
+        "SELECT t.title FROM user_training ut JOIN trainings t ON t.id = ut.training_id"
+        " WHERE ut.user_id = ? AND ut.status != 'completed' ORDER BY t.title",
+        (user_id,),
+    ).fetchall()
+    if not items:
+        return 0
+    titles = ", ".join(i["title"] for i in items)
+    plural = "s" if len(items) != 1 else ""
+    notify(conn, user_id,
+           f"Reminder: you have {len(items)} training{plural} still to complete — {titles}.",
+           url_for("user.trainings"), email=True,
+           subject="Training reminder — HVGC LINEUP")
+    return len(items)
 
 
 def notify(conn, user_id, body, link=None, email=False, subject=None,

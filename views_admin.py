@@ -15,7 +15,7 @@ from helpers import (
     admin_required, current_user, role_training_status, is_qualified,
     qualified_users_for_role, save_document,
     get_announcements, get_polls, notify, notify_all, assignment_conflicts,
-    notify_assignment, auto_schedule_plan,
+    notify_assignment, auto_schedule_plan, send_training_reminder,
     ADMIN_FEATURES, ADMIN_FEATURE_KEYS, is_full_admin, user_admin_features,
     can_access_admin_endpoint,
 )
@@ -659,8 +659,49 @@ def trainings():
         ).fetchone()["c"]
         training_view.append({"t": t, "done": done, "assigned": assigned})
     all_roles = conn.execute("SELECT * FROM roles ORDER BY name").fetchall()
+    outstanding = conn.execute(
+        "SELECT COUNT(DISTINCT ut.user_id) AS c FROM user_training ut"
+        " JOIN users u ON u.id = ut.user_id"
+        " WHERE ut.status != 'completed' AND u.is_active = 1"
+    ).fetchone()["c"]
     conn.close()
-    return render_template("admin/trainings.html", training_view=training_view, roles=all_roles)
+    return render_template("admin/trainings.html", training_view=training_view,
+                           roles=all_roles, outstanding_people=outstanding)
+
+
+@bp.route("/trainings/remind", methods=["POST"])
+@admin_required
+def remind_trainings():
+    """Email everyone with outstanding (assigned, not completed) training."""
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT DISTINCT ut.user_id FROM user_training ut JOIN users u ON u.id = ut.user_id"
+        " WHERE ut.status != 'completed' AND u.is_active = 1"
+    ).fetchall()
+    people = 0
+    for r in rows:
+        if send_training_reminder(conn, r["user_id"]):
+            people += 1
+    conn.commit()
+    conn.close()
+    if people:
+        flash(f"Sent training reminders to {people} "
+              f"{'person' if people == 1 else 'people'}.", "success")
+    else:
+        flash("Nobody has outstanding training right now. 🎉", "info")
+    return redirect(url_for("admin.trainings"))
+
+
+@bp.route("/users/<int:user_id>/remind-training", methods=["POST"])
+@admin_required
+def remind_user_training(user_id):
+    conn = get_db()
+    n = send_training_reminder(conn, user_id)
+    conn.commit()
+    conn.close()
+    flash("Reminder sent." if n else "That person has no outstanding training.",
+          "success" if n else "info")
+    return redirect(url_for("admin.user_detail", user_id=user_id))
 
 
 @bp.route("/trainings/<int:training_id>/edit", methods=["POST"])

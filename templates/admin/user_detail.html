@@ -170,7 +170,12 @@
   </div>
 
   <div class="card">
-    <h3>🎓 Training</h3>
+    <div class="list-item" style="border:none;padding:0;margin-bottom:6px;">
+      <h3 style="margin:0;">🎓 Training</h3>
+      <form method="post" action="{{ url_for('admin.remind_user_training', user_id=u['id']) }}" class="inline-form">
+        <button class="btn btn-sm btn-ghost">🔔 Send reminder</button>
+      </form>
+    </div>
     {% for tv in training_view %}
     <div class="list-item">
       <div>

@@ -18,7 +18,7 @@ from helpers import (
     login_required, current_user, role_training_status, is_qualified, parse_video,
     save_avatar, get_announcements, get_polls, poll_is_open,
     build_ics, build_ics_feed, lead_or_admin_required, can_manage_member, notify,
-    notify_assignment, ai_generate_quiz, quiz_ai_enabled,
+    notify_assignment, ai_generate_quiz, quiz_ai_enabled, send_training_reminder,
 )
 
 bp = Blueprint("user", __name__)
@@ -995,6 +995,46 @@ def _member_or_403(actor, user_id, conn):
         conn.close()
         abort(403)
     return m
+
+
+@bp.route("/team/remind-training", methods=["POST"])
+@lead_or_admin_required
+def team_remind_trainings():
+    """Remind every team member with outstanding training to finish it."""
+    actor = current_user()
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT DISTINCT ut.user_id FROM user_training ut JOIN users u ON u.id = ut.user_id"
+        " WHERE ut.status != 'completed' AND u.is_active = 1 AND u.team_id = ?",
+        (actor["team_id"],),
+    ).fetchall()
+    people = 0
+    for r in rows:
+        target = conn.execute("SELECT * FROM users WHERE id = ?", (r["user_id"],)).fetchone()
+        if can_manage_member(actor, target) and send_training_reminder(conn, r["user_id"]):
+            people += 1
+    conn.commit()
+    conn.close()
+    if people:
+        flash(f"Sent training reminders to {people} team "
+              f"{'member' if people == 1 else 'members'}.", "success")
+    else:
+        flash("Nobody on your team has outstanding training. 🎉", "info")
+    return redirect(url_for("user.team"))
+
+
+@bp.route("/team/members/<int:user_id>/remind-training", methods=["POST"])
+@lead_or_admin_required
+def team_remind_member(user_id):
+    actor = current_user()
+    conn = get_db()
+    _member_or_403(actor, user_id, conn)
+    n = send_training_reminder(conn, user_id)
+    conn.commit()
+    conn.close()
+    flash("Reminder sent." if n else "That member has no outstanding training.",
+          "success" if n else "info")
+    return redirect(url_for("user.team_member", user_id=user_id))
 
 
 @bp.route("/team/members/<int:user_id>")
