@@ -868,6 +868,69 @@ def notify_assignment(conn, service_id, user_id, role_id):
                         f"reminders the day before and an hour before.\nCalendar link: {cal_link}"))
 
 
+def _service_when(service_date, start_time):
+    """Friendly 'Sun, Aug 03 at 10:00' from a service date + optional time."""
+    from datetime import datetime
+    when = service_date
+    try:
+        when = datetime.strptime(service_date, "%Y-%m-%d").strftime("%a, %b %d")
+    except (ValueError, TypeError):
+        pass
+    if start_time:
+        when += f" at {start_time}"
+    return when
+
+
+def send_assignment_reminder(conn, row):
+    """Send one volunteer a reminder that they're serving. ``row`` needs
+    user_id, role_name, service_id, title, service_date, start_time, location.
+    Caller commits."""
+    when = _service_when(row["service_date"], row["start_time"])
+    body = f"Reminder: you're serving as {row['role_name']} for {row['title']} on {when}."
+    if row["location"]:
+        body += f" Location: {row['location']}."
+    try:
+        link = url_for("user.service_detail", service_id=row["service_id"])
+    except RuntimeError:  # called outside a request context (defensive)
+        link = None
+    notify(conn, row["user_id"], body, link,
+           email=True, subject="Serving reminder — HVGC LINEUP")
+
+
+def send_due_service_reminders(conn, hours=36):
+    """Send the automatic reminder to everyone serving within ``hours`` who
+    hasn't been reminded yet, and mark them so it only goes out once. Returns
+    the number of reminders sent. Caller commits."""
+    from datetime import datetime, timedelta
+    now = datetime.utcnow()
+    cutoff = now + timedelta(hours=hours)
+    today = now.date().isoformat()
+    rows = conn.execute(
+        "SELECT a.id, a.user_id, r.name AS role_name, s.id AS service_id, s.title,"
+        " s.service_date, s.start_time, s.location"
+        " FROM assignments a JOIN roles r ON r.id = a.role_id"
+        " JOIN services s ON s.id = a.service_id JOIN users u ON u.id = a.user_id"
+        " WHERE COALESCE(a.reminded, 0) = 0 AND u.is_active = 1 AND s.service_date >= ?"
+        " ORDER BY s.service_date, s.start_time", (today,),
+    ).fetchall()
+    sent = 0
+    for row in rows:
+        st = row["start_time"] or "09:00"
+        try:
+            dt = datetime.strptime(f"{row['service_date']} {st}", "%Y-%m-%d %H:%M")
+        except ValueError:
+            try:
+                dt = datetime.strptime(row["service_date"], "%Y-%m-%d")
+            except ValueError:
+                continue
+        if dt <= cutoff:
+            if dt > now:  # don't "remind" about a service already under way/past
+                send_assignment_reminder(conn, row)
+                sent += 1
+            conn.execute("UPDATE assignments SET reminded = 1 WHERE id = ?", (row["id"],))
+    return sent
+
+
 # --------------------------------------------------------------- auto-scheduler
 
 # Ranking of a candidate's availability on the service day. Lower is better;

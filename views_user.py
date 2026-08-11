@@ -19,6 +19,7 @@ from helpers import (
     save_avatar, get_announcements, get_polls, poll_is_open,
     build_ics, build_ics_feed, lead_or_admin_required, can_manage_member, notify,
     notify_assignment, ai_generate_quiz, quiz_ai_enabled, send_training_reminder,
+    send_assignment_reminder,
 )
 
 bp = Blueprint("user", __name__)
@@ -1280,6 +1281,40 @@ def team_assign(service_id):
     conn.commit()
     conn.close()
     flash("Assigned.", "success")
+    return redirect(url_for("user.team_schedule_service", service_id=service_id))
+
+
+@bp.route("/team/schedule/<int:service_id>/remind", methods=["POST"])
+@lead_or_admin_required
+def team_remind_service(service_id):
+    """Remind the lead's own team members who are serving this service."""
+    actor = current_user()
+    conn = get_db()
+    svc = conn.execute("SELECT id FROM services WHERE id = ?", (service_id,)).fetchone()
+    if svc is None:
+        conn.close()
+        flash("Service not found.", "danger")
+        return redirect(url_for("user.team_schedule"))
+    rows = conn.execute(
+        "SELECT a.user_id, r.name AS role_name, s.id AS service_id, s.title,"
+        " s.service_date, s.start_time, s.location"
+        " FROM assignments a JOIN roles r ON r.id = a.role_id"
+        " JOIN services s ON s.id = a.service_id JOIN users u ON u.id = a.user_id"
+        " WHERE a.service_id = ? AND u.team_id = ?", (service_id, actor["team_id"]),
+    ).fetchall()
+    n = 0
+    for row in rows:
+        target = conn.execute("SELECT * FROM users WHERE id = ?", (row["user_id"],)).fetchone()
+        if can_manage_member(actor, target):
+            send_assignment_reminder(conn, row)
+            n += 1
+    conn.commit()
+    conn.close()
+    if n:
+        flash(f"Reminder sent to {n} team member{'s' if n != 1 else ''} serving this service.",
+              "success")
+    else:
+        flash("None of your team members are assigned to this service yet.", "info")
     return redirect(url_for("user.team_schedule_service", service_id=service_id))
 
 

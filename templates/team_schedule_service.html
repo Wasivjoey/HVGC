@@ -6,7 +6,15 @@
     <h1>{{ service['title'] }}</h1>
     <p>{{ service['service_date']|pretty_date }}{% if service['start_time'] %} · {{ service['start_time'] }}{% endif %}{% if service['location'] %} · {{ service['location'] }}{% endif %}</p>
   </div>
-  <a href="{{ url_for('user.team_schedule') }}" class="btn btn-ghost">← All services</a>
+  <div class="row-actions">
+    {% if roster %}
+    <form method="post" action="{{ url_for('user.team_remind_service', service_id=service['id']) }}"
+          onsubmit="return confirm('Email a serving reminder to your team members assigned to this service?');">
+      <button class="btn">🔔 Remind my team</button>
+    </form>
+    {% endif %}
+    <a href="{{ url_for('user.team_schedule') }}" class="btn btn-ghost">← All services</a>
+  </div>
 </div>
 
 <div class="card">

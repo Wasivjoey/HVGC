@@ -75,6 +75,17 @@ services:
       # - key: EMAIL_FROM_NAME
       #   value: HVGC LINEUP
 
+      # ---- Automatic 36h serving reminders ----
+      # The app sends each volunteer a reminder ~36h before they serve. A
+      # scheduler must call GET /tasks/service-reminders hourly with this secret.
+      # Set CRON_SECRET here, then add a Render Cron Job (see the services list
+      # below or the dashboard) that runs, e.g. hourly:
+      #   curl -fsS "https://YOUR-APP.onrender.com/tasks/service-reminders?key=$CRON_SECRET"
+      # - key: CRON_SECRET
+      #   generateValue: true        # or set your own secret
+      # - key: SERVICE_REMINDER_HOURS
+      #   value: "36"
+
       # ---- Optional AI auto-scheduler ----
       # Set an Anthropic API key to enable the "Use AI assistant" option when
       # generating a service roster. Without it the rules-based auto-scheduler

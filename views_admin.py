@@ -831,6 +831,10 @@ def edit_service(service_id):
             " notes = ? WHERE id = ?",
             (title, service_date, start_time, location, notes, service_id),
         )
+        # If the date/time moved, re-arm the automatic 36h reminder for everyone
+        # already assigned so they get a fresh nudge for the new time.
+        if service_date != svc["service_date"] or start_time != (svc["start_time"] or ""):
+            conn.execute("UPDATE assignments SET reminded = 0 WHERE service_id = ?", (service_id,))
         # Optionally replace the programme-flow document.
         try:
             stored, original, data = save_document(request.files.get("document"))

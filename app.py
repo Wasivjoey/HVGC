@@ -82,6 +82,11 @@ def create_app():
     )
     app.config["AI_SCHEDULING_ENABLED"] = bool(app.config["ANTHROPIC_API_KEY"])
 
+    # Shared secret that guards the reminder cron endpoint (hit hourly by a
+    # Render Cron Job or any scheduler). Without it, the endpoint is disabled.
+    app.config["CRON_SECRET"] = os.environ.get("CRON_SECRET")
+    app.config["SERVICE_REMINDER_HOURS"] = int(os.environ.get("SERVICE_REMINDER_HOURS", "36"))
+
     init_db()
 
     app.register_blueprint(auth.bp)
@@ -90,6 +95,26 @@ def create_app():
 
     from helpers import team_color
     app.jinja_env.globals["team_color"] = team_color
+
+    @app.route("/tasks/service-reminders", methods=["GET", "POST"])
+    def service_reminders_task():
+        """Send the automatic ~36h serving reminders. Call hourly from a cron
+        job, authenticated with the CRON_SECRET (as ?key= or X-Cron-Key header).
+        Idempotent — each assignment is reminded only once."""
+        from flask import abort, jsonify
+        from db import get_db
+        from helpers import send_due_service_reminders
+        secret = app.config.get("CRON_SECRET")
+        provided = request.args.get("key") or request.headers.get("X-Cron-Key")
+        if not secret or provided != secret:
+            abort(403)
+        conn = get_db()
+        try:
+            sent = send_due_service_reminders(conn, app.config["SERVICE_REMINDER_HOURS"])
+            conn.commit()
+        finally:
+            conn.close()
+        return jsonify({"reminded": sent})
 
     @app.context_processor
     def inject_user():

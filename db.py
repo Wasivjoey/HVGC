@@ -146,6 +146,7 @@ CREATE TABLE IF NOT EXISTS assignments (
     user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     role_id     INTEGER NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
     status      TEXT NOT NULL DEFAULT 'scheduled',  -- scheduled | confirmed | declined
+    reminded    INTEGER NOT NULL DEFAULT 0,         -- 36h serving reminder sent
     created_at  TEXT NOT NULL,
     UNIQUE(service_id, user_id, role_id)
 );
@@ -525,6 +526,11 @@ def _migrate(conn):
         conn.commit()
     if "admin_perms" not in ucols:
         conn.execute("ALTER TABLE users ADD COLUMN admin_perms TEXT")
+        conn.commit()
+
+    acols = _columns(conn, "assignments")
+    if "reminded" not in acols:
+        conn.execute("ALTER TABLE assignments ADD COLUMN reminded INTEGER NOT NULL DEFAULT 0")
         conn.commit()
 
     rcols = _columns(conn, "roles")
