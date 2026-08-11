@@ -42,14 +42,34 @@ def _enforce_admin_feature():
 
 _EMAIL_SETTING_KEYS = ("email_org_name", "email_signature", "email_footer_note")
 
+# A short, friendly list of timezones for the picker. Any valid IANA name works.
+COMMON_TIMEZONES = [
+    "UTC", "America/New_York", "America/Chicago", "America/Denver",
+    "America/Los_Angeles", "America/Sao_Paulo", "Europe/London", "Europe/Paris",
+    "Africa/Lagos", "Africa/Accra", "Africa/Nairobi", "Africa/Johannesburg",
+    "Asia/Dubai", "Asia/Kolkata", "Asia/Manila", "Australia/Sydney",
+]
+
+
+def _valid_timezone(name):
+    if name in COMMON_TIMEZONES:
+        return True
+    try:
+        from zoneinfo import ZoneInfo
+        ZoneInfo(name)
+        return True
+    except Exception:
+        return False
+
 
 @bp.route("/settings", methods=["GET", "POST"])
 @admin_required
 def settings():
-    """Full admins control what frames every email — header name, signature and
-    footer note. Blank fields fall back to the built-in defaults."""
+    """Full admins control the church timezone and what frames every email —
+    header name, signature and footer note. Blank fields fall back to defaults."""
     from helpers import (DEFAULT_EMAIL_ORG, DEFAULT_EMAIL_SIGNATURE,
                          DEFAULT_EMAIL_FOOTER, build_email)
+    from flask import current_app
     defaults = {"email_org_name": DEFAULT_EMAIL_ORG,
                 "email_signature": DEFAULT_EMAIL_SIGNATURE,
                 "email_footer_note": DEFAULT_EMAIL_FOOTER}
@@ -57,18 +77,29 @@ def settings():
     if request.method == "POST":
         for key in _EMAIL_SETTING_KEYS:
             set_setting(conn, key, request.form.get(key, "").strip())
+        tz = request.form.get("timezone", "").strip()
+        if tz and _valid_timezone(tz):
+            set_setting(conn, "timezone", tz)
+        elif tz:
+            conn.commit()
+            conn.close()
+            flash(f"'{tz}' isn't a recognised timezone. Other settings were saved.",
+                  "warning")
+            return redirect(url_for("admin.settings"))
         conn.commit()
         conn.close()
-        flash("Email settings saved.", "success")
+        flash("Settings saved.", "success")
         return redirect(url_for("admin.settings"))
     values = {k: get_setting(conn, k, defaults[k]) for k in _EMAIL_SETTING_KEYS}
-    # A live preview of how an email will look with the current signature.
+    tz_current = get_setting(conn, "timezone", current_app.config.get("TIMEZONE", "UTC"))
+    tz_options = COMMON_TIMEZONES if tz_current in COMMON_TIMEZONES else [tz_current] + COMMON_TIMEZONES
     _, preview_html = build_email(
         "Alex", "This is a sample notification so you can see how your emails look.",
         link_url="https://example.com", link_label="Open HVGC LINEUP", conn=conn)
     conn.close()
     return render_template("admin/settings.html", values=values, defaults=defaults,
-                           preview_html=preview_html)
+                           preview_html=preview_html, tz_current=tz_current,
+                           tz_options=tz_options)
 
 
 @bp.route("/")

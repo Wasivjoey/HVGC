@@ -1,17 +1,30 @@
 {% extends "base.html" %}
-{% block title %}Email Settings · Admin{% endblock %}
+{% block title %}Settings · Admin{% endblock %}
 {% block body %}
 <div class="page-head">
   <div>
-    <h1>Email Settings</h1>
-    <p>Control what appears in the signature and footer of every email the app sends.</p>
+    <h1>Settings</h1>
+    <p>The church timezone and the signature on every email the app sends.</p>
   </div>
 </div>
 
+<form method="post">
 <div class="grid grid-2">
-  <div class="card">
-    <h3>Signature &amp; footer</h3>
-    <form method="post">
+  <div>
+    <div class="card">
+      <h3>General</h3>
+      <label for="timezone">Church timezone</label>
+      <select id="timezone" name="timezone">
+        {% for tz in tz_options %}
+        <option value="{{ tz }}" {{ 'selected' if tz == tz_current }}>{{ tz }}</option>
+        {% endfor %}
+      </select>
+      <p class="tag">Used to time the automatic reminder ~36 hours before each service.
+        Pick the timezone your services are scheduled in.</p>
+    </div>
+
+    <div class="card">
+      <h3>Email signature &amp; footer</h3>
       <label for="email_org_name">Header name</label>
       <input type="text" id="email_org_name" name="email_org_name"
              value="{{ values['email_org_name'] }}" placeholder="{{ defaults['email_org_name'] }}">
@@ -28,18 +41,19 @@
                 placeholder="{{ defaults['email_footer_note'] }}">{{ values['email_footer_note'] }}</textarea>
       <p class="tag">Small print under the signature. Leave blank to use the default.</p>
 
-      <button class="btn" style="margin-top:14px;">Save email settings</button>
-    </form>
-    <p class="muted" style="font-size:12px;margin-top:12px;">Leave a field blank to use the
-      default shown in grey. Changes apply to all emails immediately.</p>
+      <p class="muted" style="font-size:12px;">Leave an email field blank to use the default shown in grey.</p>
+    </div>
+
+    <button class="btn">Save settings</button>
   </div>
 
   <div class="card" style="align-self:start;">
-    <h3>Live preview</h3>
+    <h3>Email preview</h3>
     <p class="muted" style="font-size:13px;margin-top:0;">This is how a notification email will look.</p>
     <div style="border:1px solid var(--line);border-radius:10px;overflow:hidden;">
       {{ preview_html|safe }}
     </div>
   </div>
 </div>
+</form>
 {% endblock %}

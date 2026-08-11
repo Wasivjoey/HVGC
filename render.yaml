@@ -85,6 +85,10 @@ services:
       #   generateValue: true        # or set your own secret
       # - key: SERVICE_REMINDER_HOURS
       #   value: "36"
+      # Church timezone for timing reminders (an admin can also set it in-app on
+      # the Settings page). IANA name, e.g. Africa/Lagos, America/New_York.
+      # - key: TIMEZONE
+      #   value: "UTC"
 
       # ---- Optional AI auto-scheduler ----
       # Set an Anthropic API key to enable the "Use AI assistant" option when

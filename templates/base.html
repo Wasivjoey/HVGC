@@ -58,7 +58,7 @@
       {% if 'swaps' in admin_features %}<a href="{{ url_for('admin.swaps') }}" class="{{ 'active' if request.endpoint == 'admin.swaps' }}">🔁 Swap Approvals</a>{% endif %}
       {% if 'announcements' in admin_features %}<a href="{{ url_for('admin.announcements') }}" class="{{ 'active' if request.endpoint == 'admin.announcements' }}">📣 Announcements</a>{% endif %}
       {% if 'polls' in admin_features %}<a href="{{ url_for('admin.polls') }}" class="{{ 'active' if request.endpoint == 'admin.polls' }}">📊 Polls</a>{% endif %}
-      {% if is_full_admin %}<a href="{{ url_for('admin.settings') }}" class="{{ 'active' if request.endpoint == 'admin.settings' }}">✉️ Email Settings</a>{% endif %}
+      {% if is_full_admin %}<a href="{{ url_for('admin.settings') }}" class="{{ 'active' if request.endpoint == 'admin.settings' }}">⚙️ Settings</a>{% endif %}
       {% endif %}
 
       <p class="nav-label">Account</p>

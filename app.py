@@ -86,6 +86,9 @@ def create_app():
     # Render Cron Job or any scheduler). Without it, the endpoint is disabled.
     app.config["CRON_SECRET"] = os.environ.get("CRON_SECRET")
     app.config["SERVICE_REMINDER_HOURS"] = int(os.environ.get("SERVICE_REMINDER_HOURS", "36"))
+    # Church-local timezone (IANA name) used for "now" when timing reminders.
+    # An admin can override this on the Settings page; this is just the default.
+    app.config["TIMEZONE"] = os.environ.get("TIMEZONE", "UTC")
 
     init_db()
 

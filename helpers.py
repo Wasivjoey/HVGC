@@ -868,6 +868,33 @@ def notify_assignment(conn, service_id, user_id, role_id):
                         f"reminders the day before and an hour before.\nCalendar link: {cal_link}"))
 
 
+def get_timezone_name(conn=None):
+    """The configured church-local timezone (settings override, else config)."""
+    from db import get_setting
+    default = current_app.config.get("TIMEZONE", "UTC")
+    own = conn is None
+    if own:
+        conn = get_db()
+    try:
+        return get_setting(conn, "timezone", default)
+    finally:
+        if own:
+            conn.close()
+
+
+def local_now(conn=None):
+    """Current wall-clock time in the configured timezone, as a naive datetime
+    (so it compares directly with the naive local times services are stored in).
+    Falls back to UTC if the timezone is unknown or zoneinfo is unavailable."""
+    from datetime import datetime
+    name = get_timezone_name(conn)
+    try:
+        from zoneinfo import ZoneInfo
+        return datetime.now(ZoneInfo(name)).replace(tzinfo=None)
+    except Exception:
+        return datetime.utcnow()
+
+
 def _service_when(service_date, start_time):
     """Friendly 'Sun, Aug 03 at 10:00' from a service date + optional time."""
     from datetime import datetime
@@ -901,8 +928,8 @@ def send_due_service_reminders(conn, hours=36):
     """Send the automatic reminder to everyone serving within ``hours`` who
     hasn't been reminded yet, and mark them so it only goes out once. Returns
     the number of reminders sent. Caller commits."""
-    from datetime import datetime, timedelta
-    now = datetime.utcnow()
+    from datetime import timedelta
+    now = local_now(conn)
     cutoff = now + timedelta(hours=hours)
     today = now.date().isoformat()
     rows = conn.execute(
