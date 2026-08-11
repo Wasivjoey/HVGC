@@ -13,7 +13,7 @@ from flask import (
 
 from werkzeug.security import generate_password_hash, check_password_hash
 
-from db import get_db, now_iso, to_binary, from_binary
+from db import get_db, now_iso, to_binary, from_binary, local_today
 from helpers import (
     login_required, current_user, role_training_status, is_qualified, parse_video,
     save_avatar, get_announcements, get_polls, poll_is_open,
@@ -39,7 +39,7 @@ def home():
 def dashboard():
     user = current_user()
     conn = get_db()
-    today = date.today().isoformat()
+    today = local_today().isoformat()
 
     upcoming = conn.execute(
         "SELECT a.*, s.title AS service_title, s.service_date, s.start_time, s.location,"
@@ -244,7 +244,7 @@ def availability():
         conn.close()
         return redirect(url_for("user.availability"))
 
-    today = date.today().isoformat()
+    today = local_today().isoformat()
     entries = conn.execute(
         "SELECT * FROM availability WHERE user_id = ? AND day >= ? ORDER BY day",
         (user["id"], today),
@@ -252,7 +252,7 @@ def availability():
 
     # Quick-pick: list the next 8 Sundays for one-click marking.
     sundays = []
-    d = date.today()
+    d = local_today()
     d += timedelta(days=(6 - d.weekday()) % 7)
     existing_days = {e["day"] for e in entries}
     for _ in range(8):
@@ -283,7 +283,7 @@ def delete_availability(entry_id):
 @login_required
 def services():
     conn = get_db()
-    today = date.today().isoformat()
+    today = local_today().isoformat()
     upcoming = conn.execute(
         "SELECT * FROM services WHERE service_date >= ? ORDER BY service_date, start_time",
         (today,),
@@ -400,7 +400,7 @@ def my_schedule():
     """An overview of everything the signed-in volunteer is scheduled for."""
     user = current_user()
     conn = get_db()
-    today = date.today().isoformat()
+    today = local_today().isoformat()
     rows = conn.execute(
         "SELECT a.id, a.status, a.service_id, r.name AS role_name,"
         " s.title AS service_title, s.service_date, s.start_time, s.location"
@@ -430,7 +430,7 @@ def calendar():
     everyone scheduled to serve on it."""
     import calendar as calmod
     user = current_user()
-    today = date.today()
+    today = local_today()
     try:
         y, m = map(int, (request.args.get("month") or "").split("-"))
         first = date(y, m, 1)
@@ -492,7 +492,7 @@ def schedule_calendar():
     """Download the whole upcoming schedule as one calendar file."""
     user = current_user()
     conn = get_db()
-    today = date.today().isoformat()
+    today = local_today().isoformat()
     rows = conn.execute(
         "SELECT a.id, r.name AS role_name, s.title, s.service_date, s.start_time,"
         " s.location, s.notes"
@@ -1167,7 +1167,7 @@ def team_schedule():
     """Upcoming services a team lead can staff from their own team."""
     user = current_user()
     conn = get_db()
-    today = date.today().isoformat()
+    today = local_today().isoformat()
     services = conn.execute(
         "SELECT s.*, (SELECT COUNT(*) FROM assignments a JOIN users u ON u.id = a.user_id"
         "  WHERE a.service_id = s.id AND u.team_id = ?) AS team_slots"

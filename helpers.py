@@ -14,7 +14,7 @@ from urllib.parse import urlparse, parse_qs
 from flask import session, redirect, url_for, flash, g, current_app, request
 from werkzeug.utils import secure_filename
 
-from db import get_db, now_iso
+from db import get_db, now_iso, local_today
 
 
 # Admin-editable email pieces (stored in the settings table; these are the
@@ -750,7 +750,7 @@ def get_announcements(conn, active_only=True):
             " LEFT JOIN users u ON u.id = a.created_by"
             " WHERE a.active = 1 AND (a.expires_at IS NULL OR a.expires_at >= ?)"
             " ORDER BY a.created_at DESC",
-            (date.today().isoformat(),),
+            (local_today().isoformat(),),
         ).fetchall()
     return conn.execute(
         "SELECT a.*, u.name AS author FROM announcements a"

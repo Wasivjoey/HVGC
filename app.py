@@ -92,6 +92,18 @@ def create_app():
 
     init_db()
 
+    # Apply the admin-chosen timezone (settings table) over the env default, so
+    # the whole app's sense of "now"/"today" is church-local from the first request.
+    try:
+        from db import get_db, get_setting
+        _c = get_db()
+        _tz = get_setting(_c, "timezone", None)
+        _c.close()
+        if _tz:
+            app.config["TIMEZONE"] = _tz
+    except Exception:
+        pass
+
     app.register_blueprint(auth.bp)
     app.register_blueprint(views_user.bp)
     app.register_blueprint(views_admin.bp)
@@ -136,19 +148,19 @@ def create_app():
         #   ?theme= query (preview) > this session's choice > the signed-in user's
         #   saved preference > 'auto', which follows the calendar month.
         # 'auto' or an out-of-range value falls back to the current month.
-        from datetime import date
+        from db import local_today
         choice = request.args.get("theme") or session.get("theme")
         if not choice:
             user = current_user()
             if user is not None and user["theme_pref"]:
                 choice = user["theme_pref"]
         if not choice or choice == "auto":
-            month = date.today().month
+            month = local_today().month
         else:
             try:
                 month = ((int(choice) - 1) % 12) + 1
             except (TypeError, ValueError):
-                month = date.today().month
+                month = local_today().month
         return {"theme_month": month, "theme_choice": choice or "auto"}
 
     @app.context_processor

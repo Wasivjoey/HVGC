@@ -10,7 +10,8 @@ from flask import (
 from werkzeug.security import generate_password_hash
 
 from db import (get_db, now_iso, execute_returning_id, ensure_one_role_index,
-                default_team_id, to_binary, get_setting, set_setting)
+                default_team_id, to_binary, get_setting, set_setting,
+                local_today, local_datetime)
 from helpers import (
     admin_required, current_user, role_training_status, is_qualified,
     qualified_users_for_role, save_document,
@@ -80,6 +81,7 @@ def settings():
         tz = request.form.get("timezone", "").strip()
         if tz and _valid_timezone(tz):
             set_setting(conn, "timezone", tz)
+            current_app.config["TIMEZONE"] = tz  # apply immediately (this worker)
         elif tz:
             conn.commit()
             conn.close()
@@ -106,7 +108,7 @@ def settings():
 @admin_required
 def dashboard():
     conn = get_db()
-    today = date.today().isoformat()
+    today = local_today().isoformat()
     stats = {
         "users": conn.execute("SELECT COUNT(*) AS c FROM users").fetchone()["c"],
         "roles": conn.execute("SELECT COUNT(*) AS c FROM roles").fetchone()["c"],
@@ -831,7 +833,7 @@ def services():
         conn.close()
         return redirect(url_for("admin.services"))
 
-    today = date.today().isoformat()
+    today = local_today().isoformat()
     upcoming = conn.execute(
         "SELECT s.*, (SELECT COUNT(*) FROM assignments a WHERE a.service_id = s.id) AS slots"
         " FROM services s WHERE s.service_date >= ? ORDER BY s.service_date, s.start_time",
@@ -1189,7 +1191,7 @@ def reject_swap(swap_id):
 @admin_required
 def availability():
     conn = get_db()
-    today = date.today().isoformat()
+    today = local_today().isoformat()
     services = conn.execute(
         "SELECT * FROM services WHERE service_date >= ? ORDER BY service_date, start_time LIMIT 10",
         (today,),
@@ -1234,7 +1236,7 @@ def announcements():
 
     items = get_announcements(conn, active_only=False)
     conn.close()
-    return render_template("admin/announcements.html", items=items, today=date.today().isoformat())
+    return render_template("admin/announcements.html", items=items, today=local_today().isoformat())
 
 
 @bp.route("/announcements/<int:ann_id>/edit", methods=["POST"])
@@ -1297,7 +1299,7 @@ def polls():
             flash("A question and at least two options are required.", "danger")
             conn.close()
             return redirect(url_for("admin.polls"))
-        closes_at = (datetime.utcnow() + timedelta(days=days)).isoformat(timespec="seconds")
+        closes_at = (local_datetime() + timedelta(days=days)).isoformat(timespec="seconds")
         poll_id = execute_returning_id(
             conn,
             "INSERT INTO polls (question, created_by, closes_at, closed, created_at)"
@@ -1334,7 +1336,7 @@ def close_poll(poll_id):
 @admin_required
 def reopen_poll(poll_id):
     # Reopen and extend the closing time a week out so it isn't instantly closed.
-    new_close = (datetime.utcnow() + timedelta(days=7)).isoformat(timespec="seconds")
+    new_close = (local_datetime() + timedelta(days=7)).isoformat(timespec="seconds")
     conn = get_db()
     conn.execute("UPDATE polls SET closed = 0, closes_at = ? WHERE id = ?", (new_close, poll_id))
     conn.commit()

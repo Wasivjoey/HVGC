@@ -15,7 +15,7 @@ from flask import (
 )
 from werkzeug.security import generate_password_hash, check_password_hash
 
-from db import get_db, now_iso, execute_returning_id, default_team_id
+from db import get_db, now_iso, execute_returning_id, default_team_id, local_datetime
 from helpers import send_email, build_email
 
 bp = Blueprint("auth", __name__)
@@ -174,7 +174,7 @@ def forgot_password():
         ).fetchone()
         if user:
             token = secrets.token_urlsafe(32)
-            expires = (datetime.utcnow() + timedelta(hours=1)).isoformat(timespec="seconds")
+            expires = (local_datetime() + timedelta(hours=1)).isoformat(timespec="seconds")
             conn.execute(
                 "UPDATE users SET reset_token = ?, reset_expires = ? WHERE id = ?",
                 (token, expires, user["id"]),

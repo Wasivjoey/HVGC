@@ -292,8 +292,34 @@ def execute_returning_id(conn, sql, params=()):
     return conn.execute(sql, params).lastrowid
 
 
+def _tz_name():
+    """The active timezone name from app config (synced from the admin setting),
+    resilient to being called outside an application context (falls back UTC)."""
+    try:
+        from flask import current_app
+        return current_app.config.get("TIMEZONE") or "UTC"
+    except Exception:
+        return "UTC"
+
+
+def local_datetime():
+    """Current wall-clock time in the configured timezone, as a naive datetime.
+    This is the app's single source of 'now' so dates/times are consistent
+    church-local everywhere. Falls back to UTC if the zone is unknown."""
+    try:
+        from zoneinfo import ZoneInfo
+        return datetime.now(ZoneInfo(_tz_name())).replace(tzinfo=None)
+    except Exception:
+        return datetime.utcnow()
+
+
+def local_today():
+    """Today's date in the configured timezone."""
+    return local_datetime().date()
+
+
 def now_iso():
-    return datetime.utcnow().isoformat(timespec="seconds")
+    return local_datetime().isoformat(timespec="seconds")
 
 
 def get_setting(conn, key, default=None):
@@ -636,7 +662,7 @@ def _seed(conn):
 
 
 def _next_sunday():
-    today = date.today()
+    today = local_today()
     days_ahead = (6 - today.weekday()) % 7  # Monday=0 .. Sunday=6
     days_ahead = days_ahead or 7
     from datetime import timedelta
