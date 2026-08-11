@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Email Settings · Admin{% endblock %}
+{% block body %}
+<div class="page-head">
+  <div>
+    <h1>Email Settings</h1>
+    <p>Control what appears in the signature and footer of every email the app sends.</p>
+  </div>
+</div>
+
+<div class="grid grid-2">
+  <div class="card">
+    <h3>Signature &amp; footer</h3>
+    <form method="post">
+      <label for="email_org_name">Header name</label>
+      <input type="text" id="email_org_name" name="email_org_name"
+             value="{{ values['email_org_name'] }}" placeholder="{{ defaults['email_org_name'] }}">
+      <p class="tag">Shown in the coloured banner at the top of each email.</p>
+
+      <label for="email_signature">Signature</label>
+      <textarea id="email_signature" name="email_signature" rows="4"
+                placeholder="{{ defaults['email_signature'] }}">{{ values['email_signature'] }}</textarea>
+      <p class="tag">The sign-off at the end of every message. One line each — e.g. your name,
+        the church name, a phone number or a verse.</p>
+
+      <label for="email_footer_note">Footer note</label>
+      <textarea id="email_footer_note" name="email_footer_note" rows="3"
+                placeholder="{{ defaults['email_footer_note'] }}">{{ values['email_footer_note'] }}</textarea>
+      <p class="tag">Small print under the signature. Leave blank to use the default.</p>
+
+      <button class="btn" style="margin-top:14px;">Save email settings</button>
+    </form>
+    <p class="muted" style="font-size:12px;margin-top:12px;">Leave a field blank to use the
+      default shown in grey. Changes apply to all emails immediately.</p>
+  </div>
+
+  <div class="card" style="align-self:start;">
+    <h3>Live preview</h3>
+    <p class="muted" style="font-size:13px;margin-top:0;">This is how a notification email will look.</p>
+    <div style="border:1px solid var(--line);border-radius:10px;overflow:hidden;">
+      {{ preview_html|safe }}
+    </div>
+  </div>
+</div>
+{% endblock %}

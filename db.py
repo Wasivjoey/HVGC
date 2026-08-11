@@ -100,6 +100,13 @@ CREATE TABLE IF NOT EXISTS user_training (
     UNIQUE(user_id, training_id)
 );
 
+-- Small key/value store for admin-editable app settings (e.g. email signature).
+CREATE TABLE IF NOT EXISTS settings (
+    key        TEXT PRIMARY KEY,
+    value      TEXT,
+    updated_at TEXT
+);
+
 -- A quiz generated from a training's material. One quiz per training; the
 -- questions are stored as JSON: [{"q": ..., "options": [...], "answer": idx}].
 CREATE TABLE IF NOT EXISTS quizzes (
@@ -286,6 +293,26 @@ def execute_returning_id(conn, sql, params=()):
 
 def now_iso():
     return datetime.utcnow().isoformat(timespec="seconds")
+
+
+def get_setting(conn, key, default=None):
+    """Read an admin setting; returns ``default`` when unset or blank."""
+    row = conn.execute("SELECT value FROM settings WHERE key = ?", (key,)).fetchone()
+    if row is None:
+        return default
+    val = row["value"]
+    return val if (val is not None and val != "") else default
+
+
+def set_setting(conn, key, value):
+    """Upsert an admin setting (cross-backend). Caller commits."""
+    exists = conn.execute("SELECT 1 FROM settings WHERE key = ?", (key,)).fetchone()
+    if exists:
+        conn.execute("UPDATE settings SET value = ?, updated_at = ? WHERE key = ?",
+                     (value, now_iso(), key))
+    else:
+        conn.execute("INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?)",
+                     (key, value, now_iso()))
 
 
 def blob_sql_type():

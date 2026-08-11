@@ -16,7 +16,7 @@ from flask import (
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from db import get_db, now_iso, execute_returning_id, default_team_id
-from helpers import send_email
+from helpers import send_email, build_email
 
 bp = Blueprint("auth", __name__)
 
@@ -27,15 +27,14 @@ def _send_verification(user_id, name, email, token):
     """Email the verification link; return (sent, link)."""
     link = url_for("auth.verify_email", token=token, _external=True)
     body = (
-        f"Hi {name},\n\n"
         "Thanks for registering for HVGC LINEUP. Please confirm your email "
-        "address by opening this link:\n\n"
-        f"{link}\n\n"
+        "address using the button below.\n\n"
         "After your email is verified, an administrator will approve your account "
         "and you'll be able to sign in.\n\n"
         "If you didn't request this, you can ignore this message."
     )
-    sent = send_email(email, "Verify your HVGC LINEUP account", body)
+    text, html = build_email(name, body, link_url=link, link_label="Verify my email")
+    sent = send_email(email, "Verify your HVGC LINEUP account", text, html=html)
     return sent, link
 
 
@@ -183,14 +182,15 @@ def forgot_password():
             conn.commit()
             link = url_for("auth.reset_password", token=token, _external=True)
             body = (
-                f"Hi {user['name']},\n\n"
-                "We received a request to reset your HVGC LINEUP password. Open this "
-                "link to choose a new one (it expires in 1 hour):\n\n"
-                f"{link}\n\n"
+                "We received a request to reset your HVGC LINEUP password. Use the "
+                "button below to choose a new one — the link expires in 1 hour.\n\n"
                 "If you didn't request this, you can safely ignore this email — your "
                 "password won't change."
             )
-            sent = send_email(user["email"], "Reset your HVGC LINEUP password", body)
+            text, html = build_email(user["name"], body, link_url=link,
+                                     link_label="Reset my password")
+            sent = send_email(user["email"], "Reset your HVGC LINEUP password", text,
+                              html=html)
             if not sent and not current_app.config.get("EMAIL_ENABLED"):
                 dev_link = link
         conn.close()

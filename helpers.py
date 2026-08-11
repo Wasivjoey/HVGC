@@ -17,8 +17,91 @@ from werkzeug.utils import secure_filename
 from db import get_db, now_iso
 
 
-def send_email(to_address, subject, body, attachments=None):
-    """Send a plain-text email, optionally with attachments. Returns True if sent.
+# Admin-editable email pieces (stored in the settings table; these are the
+# defaults used until an admin changes them on the Email settings page).
+DEFAULT_EMAIL_ORG = "HVGC LINEUP"
+DEFAULT_EMAIL_SIGNATURE = "— The HVGC LINEUP Team\nHis Vineyard Global Church"
+DEFAULT_EMAIL_FOOTER = ("You're receiving this because you serve with HVGC LINEUP. "
+                        "Manage your email preferences in your profile.")
+
+
+def email_settings(conn=None):
+    """Return the (org name, signature, footer) used to frame every email. Reads
+    the settings table, falling back to the defaults above."""
+    from db import get_setting
+    own = conn is None
+    if own:
+        conn = get_db()
+    try:
+        return (
+            get_setting(conn, "email_org_name", DEFAULT_EMAIL_ORG),
+            get_setting(conn, "email_signature", DEFAULT_EMAIL_SIGNATURE),
+            get_setting(conn, "email_footer_note", DEFAULT_EMAIL_FOOTER),
+        )
+    finally:
+        if own:
+            conn.close()
+
+
+def build_email(name, body, link_url=None, link_label="Open HVGC LINEUP",
+                extra=None, conn=None):
+    """Frame a message into a well-structured (plain-text, HTML) email pair with
+    a greeting, the body, an optional action button, an admin-defined signature,
+    and a footer. Returns ``(text, html)``."""
+    import html as H
+    org, signature, footer = email_settings(conn)
+
+    # --- plain text ---
+    lines = [f"Hi {name},", "", body.strip()]
+    if extra:
+        lines += ["", extra.strip()]
+    if link_url:
+        lines += ["", f"{link_label}: {link_url}"]
+    lines += ["", signature]
+    if footer:
+        lines += ["", "--", footer]
+    text = "\n".join(lines)
+
+    # --- HTML ---
+    def paragraphs(s):
+        out = ""
+        for block in s.split("\n\n"):
+            block = block.strip()
+            if block:
+                out += ('<p style="margin:0 0 14px;">'
+                        + H.escape(block).replace("\n", "<br>") + "</p>")
+        return out
+
+    button = ""
+    if link_url:
+        button = (f'<p style="margin:20px 0;"><a href="{H.escape(link_url, quote=True)}" '
+                  'style="display:inline-block;background:#5b6cff;color:#ffffff;'
+                  'text-decoration:none;padding:11px 22px;border-radius:8px;'
+                  f'font-weight:600;">{H.escape(link_label)}</a></p>')
+    extra_html = (f'<p style="margin:0 0 14px;color:#6b7488;">{H.escape(extra)}</p>'
+                  if extra else "")
+    sig_html = H.escape(signature).replace("\n", "<br>")
+    footer_html = H.escape(footer).replace("\n", "<br>") if footer else ""
+    html = f"""\
+<div style="background:#f5f6fa;padding:24px 12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <div style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid #e6e9f0;border-radius:14px;overflow:hidden;">
+    <div style="background:#5b6cff;color:#ffffff;padding:16px 24px;font-weight:700;font-size:18px;">{H.escape(org)}</div>
+    <div style="padding:24px;color:#1c2333;font-size:15px;line-height:1.6;">
+      <p style="margin:0 0 14px;">Hi {H.escape(name)},</p>
+      {paragraphs(body)}
+      {extra_html}
+      {button}
+      <div style="margin-top:24px;color:#6b7488;">{sig_html}</div>
+    </div>
+    {'<div style="padding:14px 24px;background:#f7f8fc;color:#8a93a5;font-size:12px;">' + footer_html + '</div>' if footer_html else ''}
+  </div>
+</div>"""
+    return text, html
+
+
+def send_email(to_address, subject, body, attachments=None, html=None):
+    """Send an email (plain text, plus optional HTML alternative). Returns True
+    if sent.
 
     attachments: list of (filename, data, maintype, subtype) tuples.
     Uses the Brevo HTTP API when a BREVO_API_KEY is configured (works over HTTPS
@@ -32,11 +115,11 @@ def send_email(to_address, subject, body, attachments=None):
                                 to_address, subject, body)
         return False
     if cfg.get("BREVO_API_KEY"):
-        return _send_email_brevo(to_address, subject, body, attachments)
-    return _send_email_smtp(to_address, subject, body, attachments)
+        return _send_email_brevo(to_address, subject, body, attachments, html)
+    return _send_email_smtp(to_address, subject, body, attachments, html)
 
 
-def _send_email_brevo(to_address, subject, body, attachments=None):
+def _send_email_brevo(to_address, subject, body, attachments=None, html=None):
     """Send via Brevo's transactional email API over HTTPS (port 443)."""
     import base64
     import json
@@ -50,6 +133,8 @@ def _send_email_brevo(to_address, subject, body, attachments=None):
         "subject": subject,
         "textContent": body,
     }
+    if html:
+        payload["htmlContent"] = html
     atts = []
     for filename, data, _maintype, _subtype in (attachments or []):
         if isinstance(data, str):
@@ -79,7 +164,7 @@ def _send_email_brevo(to_address, subject, body, attachments=None):
         return False
 
 
-def _send_email_smtp(to_address, subject, body, attachments=None):
+def _send_email_smtp(to_address, subject, body, attachments=None, html=None):
     """Send via SMTP (smtplib). Note: many hosts (e.g. Render) block SMTP ports."""
     cfg = current_app.config
     msg = EmailMessage()
@@ -87,6 +172,8 @@ def _send_email_smtp(to_address, subject, body, attachments=None):
     msg["From"] = cfg["SMTP_FROM"]
     msg["To"] = to_address
     msg.set_content(body)
+    if html:
+        msg.add_alternative(html, subtype="html")
     for filename, data, maintype, subtype in (attachments or []):
         if isinstance(data, str):
             data = data.encode("utf-8")
@@ -421,6 +508,7 @@ ADMIN_ENDPOINT_FEATURE = {
     "admin.set_user_team": "people",
     "admin.teams": "teams", "admin.rename_team": "teams", "admin.delete_team": "teams",
     "admin.update_user_flags": "admins", "admin.set_admin_access": "admins",
+    "admin.settings": "admins",
     "admin.roles": "roles", "admin.edit_role": "roles", "admin.delete_role": "roles",
     "admin.trainings": "trainings", "admin.edit_training": "trainings",
     "admin.delete_training": "trainings", "admin.remind_trainings": "trainings",
@@ -602,14 +690,10 @@ def notify(conn, user_id, body, link=None, email=False, subject=None,
                     url = request.url_root.rstrip("/") + link
                 except RuntimeError:  # no request context (shouldn't happen here)
                     url = link
-            message = f"Hi {row['name']},\n\n{body}"
-            if email_extra:
-                message += f"\n\n{email_extra}"
-            if url:
-                message += f"\n\nOpen HVGC LINEUP: {url}"
-            message += "\n\n— HVGC LINEUP"
-            send_email(row["email"], subject or "HVGC LINEUP update", message,
-                       attachments=attachments)
+            text, html = build_email(row["name"], body, link_url=url or None,
+                                     extra=email_extra, conn=conn)
+            send_email(row["email"], subject or "HVGC LINEUP update", text,
+                       attachments=attachments, html=html)
 
 
 def notify_all(conn, body, link=None, exclude_id=None):

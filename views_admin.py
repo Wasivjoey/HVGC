@@ -10,7 +10,7 @@ from flask import (
 from werkzeug.security import generate_password_hash
 
 from db import (get_db, now_iso, execute_returning_id, ensure_one_role_index,
-                default_team_id, to_binary)
+                default_team_id, to_binary, get_setting, set_setting)
 from helpers import (
     admin_required, current_user, role_training_status, is_qualified,
     qualified_users_for_role, save_document,
@@ -38,6 +38,37 @@ def _enforce_admin_feature():
         else:
             flash("That area is for administrators only.", "danger")
         return redirect(url_for("user.dashboard"))
+
+
+_EMAIL_SETTING_KEYS = ("email_org_name", "email_signature", "email_footer_note")
+
+
+@bp.route("/settings", methods=["GET", "POST"])
+@admin_required
+def settings():
+    """Full admins control what frames every email — header name, signature and
+    footer note. Blank fields fall back to the built-in defaults."""
+    from helpers import (DEFAULT_EMAIL_ORG, DEFAULT_EMAIL_SIGNATURE,
+                         DEFAULT_EMAIL_FOOTER, build_email)
+    defaults = {"email_org_name": DEFAULT_EMAIL_ORG,
+                "email_signature": DEFAULT_EMAIL_SIGNATURE,
+                "email_footer_note": DEFAULT_EMAIL_FOOTER}
+    conn = get_db()
+    if request.method == "POST":
+        for key in _EMAIL_SETTING_KEYS:
+            set_setting(conn, key, request.form.get(key, "").strip())
+        conn.commit()
+        conn.close()
+        flash("Email settings saved.", "success")
+        return redirect(url_for("admin.settings"))
+    values = {k: get_setting(conn, k, defaults[k]) for k in _EMAIL_SETTING_KEYS}
+    # A live preview of how an email will look with the current signature.
+    _, preview_html = build_email(
+        "Alex", "This is a sample notification so you can see how your emails look.",
+        link_url="https://example.com", link_label="Open HVGC LINEUP", conn=conn)
+    conn.close()
+    return render_template("admin/settings.html", values=values, defaults=defaults,
+                           preview_html=preview_html)
 
 
 @bp.route("/")
