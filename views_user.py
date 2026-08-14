@@ -1371,8 +1371,8 @@ def team_quizzes():
                 n = 0
         vid = parse_video(t["video_url"])
         has_video = bool(vid and vid["kind"] == "youtube")
-        has_material = bool((t["content"] or "").strip() or (t["description"] or "").strip()
-                            or has_video)
+        # Even a title is enough — the generator scales to what's available.
+        has_material = bool((t["title"] or "").strip())
         view.append({"t": t, "quiz_id": t["quiz_id"], "questions": n,
                      "has_material": has_material, "has_video": has_video})
     conn.close()
@@ -1397,8 +1397,8 @@ def generate_quiz(training_id):
     questions = ai_generate_quiz(t["title"], t["content"], t["description"], t["video_url"])
     if not questions:
         conn.close()
-        flash("Couldn't generate a quiz from this training's material. Add more written "
-              "content to the training and try again.", "warning")
+        flash("Couldn't generate a quiz just now — the AI service may be busy. Try again, "
+              "and adding a line or two of content gives better questions.", "warning")
         return redirect(url_for("user.team_quizzes"))
 
     payload = json.dumps(questions)

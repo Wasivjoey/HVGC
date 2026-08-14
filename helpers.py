@@ -1159,13 +1159,14 @@ def quiz_ai_enabled():
     return bool(current_app.config.get("ANTHROPIC_API_KEY"))
 
 
-def ai_generate_quiz(title, content, description=None, video_url=None, num_questions=5):
+def ai_generate_quiz(title, content, description=None, video_url=None, num_questions=None):
     """Generate a multiple-choice quiz from a training's material using Claude.
 
-    Source material is the written content plus, when a YouTube video is
-    attached, its caption transcript. Returns a list of
-    ``{"q": str, "options": [str, ...], "answer": int}`` dicts, or ``None`` on
-    any failure (no key, no material, network, malformed response).
+    Works from as little as a title: source material is the title, description,
+    written content and (when a YouTube video is attached) its caption
+    transcript. The number of questions scales to how much material there is.
+    Returns a list of ``{"q": str, "options": [str, ...], "answer": int}`` dicts,
+    or ``None`` on failure (no key, empty title, network, malformed response).
     """
     import json
     import urllib.error
@@ -1181,15 +1182,22 @@ def ai_generate_quiz(title, content, description=None, video_url=None, num_quest
         if transcript:
             parts.append("Video transcript:\n" + transcript)
     material = "\n\n".join(p for p in parts if p).strip()
-    if len(material) < 40:  # not enough to build a meaningful quiz
-        return None
+    if not (title or "").strip():
+        return None  # need at least a topic/title to build on
+
+    # Scale the quiz to the amount of material so short trainings still work.
+    if num_questions is None:
+        num_questions = 5 if len(material) >= 400 else (4 if len(material) >= 150 else 3)
 
     instructions = (
         f"You are writing a short quiz to check a volunteer's understanding of the "
-        f"training below. Write {num_questions} multiple-choice questions, each with "
-        "exactly 4 options and one correct answer. Base every question ONLY on the "
-        "training material — do not invent facts. Respond with ONLY a JSON object of "
-        "the form {\"questions\": [{\"q\": \"...\", \"options\": [\"a\",\"b\",\"c\",\"d\"], "
+        f"training below. Write up to {num_questions} multiple-choice questions, each "
+        "with exactly 4 options and one correct answer. Prefer facts stated in the "
+        "material; if the material is brief, it's fine to write fewer questions and to "
+        "ask sensible questions about the topic the title/description covers — but stay "
+        "accurate and don't invent specific claims the material contradicts. Write at "
+        "least one question. Respond with ONLY a JSON object of the form "
+        "{\"questions\": [{\"q\": \"...\", \"options\": [\"a\",\"b\",\"c\",\"d\"], "
         "\"answer\": <index 0-3 of the correct option>}]}. No prose, no markdown."
     )
     body = json.dumps({
