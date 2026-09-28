@@ -93,6 +93,24 @@ def dashboard():
     announcements = get_announcements(conn, active_only=True)
     polls = get_polls(conn, user_id=user["id"], only_open=True)
 
+    # The whole team's upcoming schedule — visible to everyone, so even people
+    # who aren't scheduled can see every service and who's serving on it.
+    svc_rows = conn.execute(
+        "SELECT id, title, service_date, start_time, location FROM services"
+        " WHERE service_date >= ? ORDER BY service_date, start_time LIMIT 8",
+        (today,),
+    ).fetchall()
+    team_services = []
+    for s in svc_rows:
+        roster = conn.execute(
+            "SELECT r.name AS role_name, u.name AS user_name, a.status, a.user_id"
+            " FROM assignments a JOIN roles r ON r.id = a.role_id"
+            " JOIN users u ON u.id = a.user_id"
+            " WHERE a.service_id = ? ORDER BY r.name, u.name",
+            (s["id"],),
+        ).fetchall()
+        team_services.append({"svc": s, "roster": roster})
+
     conn.close()
     return render_template(
         "dashboard.html",
@@ -102,6 +120,7 @@ def dashboard():
         role_status=role_status,
         announcements=announcements,
         polls=polls,
+        team_services=team_services,
         today=today,
     )
 

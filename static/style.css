@@ -321,6 +321,13 @@ details.inline-edit[open] { margin-top: 10px; }
 .quiz-opt-static:hover { background: transparent; }
 .quiz-right { border-color: var(--green); background: var(--green-bg); }
 .quiz-wrong { border-color: var(--red); background: var(--red-bg); }
+.svc-block { padding: 12px 0; border-bottom: 1px solid var(--line); }
+.svc-block:last-of-type { border-bottom: none; }
+.roster-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.roster-tag { font-size: 12px; background: #f0f2f8; color: var(--ink); border-radius: 999px; padding: 3px 10px; }
+.roster-tag .rt-role { color: var(--muted); }
+.roster-tag.is-me { background: var(--blue-bg); color: var(--brand-dark); font-weight: 600; }
+.roster-tag.is-me .rt-role { color: var(--brand); }
 
 /* people bulk actions */
 .bulk-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }

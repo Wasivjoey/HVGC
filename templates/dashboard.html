@@ -146,6 +146,43 @@
 </div>
 
 <div class="card">
+  <div class="sec-head"><span class="sec-ic ic-blue">⛪</span><h3>Upcoming services — who's serving</h3></div>
+  {% if team_services %}
+    {% for ts in team_services %}
+    <div class="svc-block">
+      <div class="list-item" style="border:none;padding:0 0 6px;">
+        <div class="li-lead">
+          <span class="date-chip">
+            <span class="d-mon">{{ ts['svc']['service_date']|mon }}</span>
+            <span class="d-day">{{ ts['svc']['service_date']|dayn }}</span>
+          </span>
+          <div>
+            <strong>{{ ts['svc']['title'] }}</strong><br>
+            <span class="meta">{{ ts['svc']['service_date']|pretty_date }}{% if ts['svc']['start_time'] %} · {{ ts['svc']['start_time'] }}{% endif %}{% if ts['svc']['location'] %} · {{ ts['svc']['location'] }}{% endif %}</span>
+          </div>
+        </div>
+        <a href="{{ url_for('user.service_detail', service_id=ts['svc']['id']) }}" class="btn btn-sm btn-ghost">View</a>
+      </div>
+      {% if ts['roster'] %}
+      <div class="roster-tags">
+        {% for a in ts['roster'] %}
+        <span class="roster-tag{{ ' is-me' if a['user_id'] == current_user['id'] }}">
+          <span class="rt-role">{{ a['role_name'] }}</span> {{ a['user_name'].split()[0] }}
+        </span>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="muted" style="font-size:13px;margin:2px 0 0;">No one scheduled yet.</p>
+      {% endif %}
+    </div>
+    {% endfor %}
+    <p class="meta" style="margin-top:10px;"><a href="{{ url_for('user.calendar') }}">Open the full team calendar →</a></p>
+  {% else %}
+    <div class="empty">No upcoming services scheduled.</div>
+  {% endif %}
+</div>
+
+<div class="card">
   <div class="sec-head"><span class="sec-ic ic-green">🔁</span><h3>Swaps you can cover</h3></div>
   {% if coverable %}
     {% for sw in coverable %}
