@@ -56,7 +56,6 @@ CREATE TABLE IF NOT EXISTS users (
     must_change_password INTEGER NOT NULL DEFAULT 0,  -- force a change at next login
     email_opt_in   INTEGER NOT NULL DEFAULT 1,  -- receive email notifications
     hide_volunteer_menu INTEGER NOT NULL DEFAULT 0,  -- admins: hide the volunteer menu
-    theme_pref     TEXT,                        -- 'auto' or '1'..'12' colour theme choice
     admin_perms    TEXT,                        -- assistant tier: comma-list of granted admin features
     created_at     TEXT NOT NULL
 );
@@ -546,9 +545,6 @@ def _migrate(conn):
         conn.commit()
     if "team_id" not in ucols:
         conn.execute("ALTER TABLE users ADD COLUMN team_id INTEGER")
-        conn.commit()
-    if "theme_pref" not in ucols:
-        conn.execute("ALTER TABLE users ADD COLUMN theme_pref TEXT")
         conn.commit()
     if "admin_perms" not in ucols:
         conn.execute("ALTER TABLE users ADD COLUMN admin_perms TEXT")

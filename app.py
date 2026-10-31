@@ -143,27 +143,6 @@ def create_app():
                 "is_full_admin": is_full_admin(user)}
 
     @app.context_processor
-    def inject_theme():
-        # The accent theme (theme-1..theme-12) is resolved in priority order:
-        #   ?theme= query (preview) > this session's choice > the signed-in user's
-        #   saved preference > 'auto', which follows the calendar month.
-        # 'auto' or an out-of-range value falls back to the current month.
-        from db import local_today
-        choice = request.args.get("theme") or session.get("theme")
-        if not choice:
-            user = current_user()
-            if user is not None and user["theme_pref"]:
-                choice = user["theme_pref"]
-        if not choice or choice == "auto":
-            month = local_today().month
-        else:
-            try:
-                month = ((int(choice) - 1) % 12) + 1
-            except (TypeError, ValueError):
-                month = local_today().month
-        return {"theme_month": month, "theme_choice": choice or "auto"}
-
-    @app.context_processor
     def inject_notifications():
         from db import get_db
         from helpers import unread_notification_count
