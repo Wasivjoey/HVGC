@@ -146,6 +146,12 @@ def create_app():
                 "is_full_admin": is_full_admin(user)}
 
     @app.context_processor
+    def inject_integrations():
+        # URL of the external WA Scheduler app (WhatsApp group post scheduler).
+        # When unset the nav link is hidden, so Lineup runs fine without it.
+        return {"wa_scheduler_url": os.environ.get("WA_SCHEDULER_URL", "").strip()}
+
+    @app.context_processor
     def inject_notifications():
         from db import get_db
         from helpers import unread_notification_count

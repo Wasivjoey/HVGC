@@ -63,6 +63,7 @@
       {% if 'announcements' in admin_features %}<a href="{{ url_for('admin.announcements') }}" class="{{ 'active' if request.endpoint == 'admin.announcements' }}">{{ ic.icon('megaphone') }} Announcements</a>{% endif %}
       {% if 'polls' in admin_features %}<a href="{{ url_for('admin.polls') }}" class="{{ 'active' if request.endpoint == 'admin.polls' }}">{{ ic.icon('poll') }} Polls</a>{% endif %}
       {% if is_full_admin %}<a href="{{ url_for('admin.settings') }}" class="{{ 'active' if request.endpoint == 'admin.settings' }}">{{ ic.icon('settings') }} Settings</a>{% endif %}
+      {% if is_full_admin and wa_scheduler_url %}<a href="{{ wa_scheduler_url }}" target="_blank" rel="noopener">{{ ic.icon('send') }} WA Scheduler</a>{% endif %}
       {% endif %}
 
       <p class="nav-label">Account</p>
