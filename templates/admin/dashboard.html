@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "_icons.html" as ic %}
 {% block title %}Admin · HVGC LINEUP{% endblock %}
 {% block body %}
 <div class="page-head">
@@ -20,8 +21,8 @@
 </div>
 
 {% if conflicts %}
-<div class="card" style="border-left:4px solid var(--red);margin-top:18px;">
-  <h3>⚠️ Scheduling conflicts to resolve</h3>
+<div class="card" style="border-color:#e7c4bc;background:var(--red-bg);margin-top:18px;">
+  <h3 style="color:#8f2e25;">Scheduling conflicts to resolve</h3>
   <p class="muted" style="font-size:13px;margin-top:0;">These people are assigned to more than one
   role in the same service (from before the one-role-per-service rule). Remove the extra roles to
   fix it — once all conflicts are cleared the rule is enforced automatically.</p>
@@ -39,7 +40,7 @@
 {% endif %}
 
 {% if pending %}
-<div class="card" style="border-left:4px solid var(--amber);margin-top:18px;">
+<div class="card" style="border-color:#ead3a6;background:var(--amber-bg);margin-top:18px;">
   <h3>🆕 New sign-ups awaiting approval</h3>
   {% for u in pending %}
   <div class="list-item">
@@ -63,7 +64,7 @@
 
 <div class="grid grid-2" style="margin-top:18px;">
   <div class="card">
-    <h3>🗓️ Next services</h3>
+    <div class="sec-head"><span class="sec-ic ic-blue">{{ ic.icon('calendar') }}</span><h3>Next services</h3></div>
     {% if upcoming %}
       {% for s in upcoming %}
       <div class="list-item">
@@ -80,7 +81,7 @@
   </div>
 
   <div class="card">
-    <h3>🔁 Swaps needing attention</h3>
+    <div class="sec-head"><span class="sec-ic ic-green">{{ ic.icon('swap') }}</span><h3>Swaps needing attention</h3></div>
     {% if swaps %}
       {% for sw in swaps %}
       <div class="list-item">

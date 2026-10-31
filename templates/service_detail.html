@@ -10,13 +10,13 @@
 </div>
 
 {% if service['notes'] %}
-<div class="card" style="border-left:4px solid var(--brand);">
+<div class="card" style="border-color:#e7cab8;background:var(--brand-soft);">
   <strong>Service notes:</strong> <span class="note-body">{{ service['notes'] }}</span>
 </div>
 {% endif %}
 
 {% if service['doc_filename'] %}
-<div class="card" style="border-left:4px solid var(--green);">
+<div class="card" style="border-color:#cedcbf;background:var(--green-bg);">
   📄 <strong>Programme flow:</strong>
   <a href="{{ url_for('user.service_document', service_id=service['id']) }}" target="_blank" rel="noopener">{{ service['doc_original'] }}</a>
 </div>

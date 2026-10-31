@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "_icons.html" as ic %}
 {% block title %}Dashboard · HVGC LINEUP{% endblock %}
 {% block body %}
 {% set qualified_count = role_status | selectattr('qualified') | list | length %}
@@ -11,46 +12,46 @@
     <span class="hero-avatar hero-avatar-letter">{{ current_user['name'][0]|upper }}</span>
     {% endif %}
     <div>
-      <h1>Hi, {{ current_user['name'].split()[0] }} 👋</h1>
+      <h1>Hi, {{ current_user['name'].split()[0] }}</h1>
       <p class="hero-sub">{{ today|pretty_date }} · here's your serving snapshot</p>
     </div>
   </div>
-  <a href="{{ url_for('user.availability') }}" class="btn">📅 Update availability</a>
+  <a href="{{ url_for('user.availability') }}" class="btn">{{ ic.icon('availability') }} Update availability</a>
 </div>
 
 <div class="dash-stats">
   <a class="tile" href="{{ url_for('user.services') }}">
-    <span class="tile-ic ic-blue">📅</span>
+    <span class="tile-ic ic-blue">{{ ic.icon('calendar-check') }}</span>
     <span><span class="tile-n">{{ upcoming|length }}</span><div class="tile-l">Upcoming assignments</div></span>
   </a>
   <a class="tile" href="{{ url_for('user.trainings') }}">
-    <span class="tile-ic ic-amber">🎓</span>
+    <span class="tile-ic ic-amber">{{ ic.icon('training') }}</span>
     <span><span class="tile-n">{{ pending_training|length }}</span><div class="tile-l">Training to complete</div></span>
   </a>
   <a class="tile" href="{{ url_for('user.swaps') }}">
-    <span class="tile-ic ic-green">🔁</span>
+    <span class="tile-ic ic-green">{{ ic.icon('swap') }}</span>
     <span><span class="tile-n">{{ coverable|length }}</span><div class="tile-l">Swaps you can cover</div></span>
   </a>
   <a class="tile" href="{{ url_for('user.profile') }}">
-    <span class="tile-ic ic-violet">🎛️</span>
+    <span class="tile-ic ic-violet">{{ ic.icon('roles') }}</span>
     <span><span class="tile-n">{{ qualified_count }}</span><div class="tile-l">Roles you're qualified for</div></span>
   </a>
 </div>
 
 {% if announcements %}
 {% for a in announcements %}
-<div class="card" style="border-left:4px solid var(--brand);">
-  <h3 style="margin-bottom:4px;">📣 {{ a['title'] }}</h3>
+<div class="card">
+  <div class="sec-head"><span class="sec-ic ic-amber">{{ ic.icon('megaphone') }}</span><h3>{{ a['title'] }}</h3></div>
   <p class="note-body" style="margin:0;">{{ a['body'] }}</p>
-  <p class="meta" style="margin:8px 0 0;">{{ a['author'] or 'Admin' }} · {{ a['created_at']|pretty_dt }}</p>
+  <p class="meta" style="margin:10px 0 0;">{{ a['author'] or 'Admin' }} · {{ a['created_at']|pretty_dt }}</p>
 </div>
 {% endfor %}
 {% endif %}
 
 {% if polls %}
 {% for p in polls %}
-<div class="card" style="border-left:4px solid var(--green);">
-  <div class="sec-head"><span class="sec-ic ic-green">📊</span><h3>{{ p['poll']['question'] }}</h3></div>
+<div class="card">
+  <div class="sec-head"><span class="sec-ic ic-green">{{ ic.icon('poll') }}</span><h3>{{ p['poll']['question'] }}</h3></div>
   {% if p['user_option_id'] or not p['open'] %}
     {% for o in p['options'] %}
     <div style="margin:8px 0;">
@@ -80,8 +81,8 @@
 {% endif %}
 
 {% if pending_training %}
-<div class="card" style="border-left:4px solid var(--amber);">
-  <div class="sec-head"><span class="sec-ic ic-amber">⚠️</span><h3>Training to complete before you can serve</h3></div>
+<div class="card">
+  <div class="sec-head"><span class="sec-ic ic-amber">{{ ic.icon('training') }}</span><h3>Training to complete before you can serve</h3></div>
   {% for t in pending_training %}
   <div class="list-item">
     <div>
@@ -96,7 +97,7 @@
 
 <div class="grid grid-2">
   <div class="card card-accent">
-    <div class="sec-head"><span class="sec-ic ic-blue">📅</span><h3>Your upcoming assignments</h3></div>
+    <div class="sec-head"><span class="sec-ic ic-blue">{{ ic.icon('calendar-check') }}</span><h3>Your upcoming assignments</h3></div>
     {% if upcoming %}
       {% for a in upcoming %}
       <div class="list-item">
@@ -114,18 +115,18 @@
           {% if a['status'] == 'confirmed' %}<span class="badge badge-green">Confirmed</span>
           {% elif a['status'] == 'declined' %}<span class="badge badge-red">Declined</span>
           {% else %}<span class="badge badge-amber">Scheduled</span>{% endif %}
-          <a href="{{ url_for('user.service_calendar', service_id=a['service_id']) }}" class="btn btn-sm btn-ghost" title="Add to calendar">📅</a>
+          <a href="{{ url_for('user.service_calendar', service_id=a['service_id']) }}" class="btn btn-sm btn-ghost" title="Add to calendar" aria-label="Add to calendar">{{ ic.icon('calendar') }}</a>
           <a href="{{ url_for('user.service_detail', service_id=a['service_id']) }}" class="btn btn-sm btn-ghost">View</a>
         </div>
       </div>
       {% endfor %}
     {% else %}
-      <div class="empty">No upcoming assignments yet. 🎉</div>
+      <div class="empty">No upcoming assignments yet.</div>
     {% endif %}
   </div>
 
-  <div class="card card-accent" style="border-top-color:var(--green);">
-    <div class="sec-head"><span class="sec-ic ic-violet">🎛️</span><h3>Your roles &amp; qualification</h3></div>
+  <div class="card card-accent">
+    <div class="sec-head"><span class="sec-ic ic-violet">{{ ic.icon('roles') }}</span><h3>Your roles &amp; qualification</h3></div>
     {% if role_status %}
       {% for rs in role_status %}
       <div class="list-item">
@@ -146,7 +147,7 @@
 </div>
 
 <div class="card">
-  <div class="sec-head"><span class="sec-ic ic-blue">⛪</span><h3>Upcoming services — who's serving</h3></div>
+  <div class="sec-head"><span class="sec-ic ic-blue">{{ ic.icon('sanctuary') }}</span><h3>Upcoming services — who's serving</h3></div>
   {% if team_services %}
     {% for ts in team_services %}
     <div class="svc-block">
@@ -183,7 +184,7 @@
 </div>
 
 <div class="card">
-  <div class="sec-head"><span class="sec-ic ic-green">🔁</span><h3>Swaps you can cover</h3></div>
+  <div class="sec-head"><span class="sec-ic ic-green">{{ ic.icon('swap') }}</span><h3>Swaps you can cover</h3></div>
   {% if coverable %}
     {% for sw in coverable %}
     <div class="list-item">

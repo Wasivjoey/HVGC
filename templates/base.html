@@ -4,10 +4,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}HVGC LINEUP{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,560;9..144,600&family=Inter:wght@400;450;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <link rel="icon" href="{{ url_for('static', filename='logo.png') }}">
 </head>
-<body class="theme-{{ theme_month }}">
+{% import "_icons.html" as ic %}
+<body>
 {% if current_user %}
 <header class="topbar no-print">
   <button class="hamburger" onclick="document.body.classList.toggle('nav-open')" aria-label="Toggle menu">
@@ -31,43 +35,43 @@
       {% set hide_vol = current_user['is_admin'] and current_user['hide_volunteer_menu'] %}
       {% if not hide_vol %}
       <p class="nav-label">Volunteer</p>
-      <a href="{{ url_for('user.dashboard') }}" class="{{ 'active' if request.endpoint == 'user.dashboard' }}">📊 Dashboard</a>
-      <a href="{{ url_for('user.my_schedule') }}" class="{{ 'active' if request.endpoint == 'user.my_schedule' }}">🗓️ My Schedule</a>
-      <a href="{{ url_for('user.calendar') }}" class="{{ 'active' if request.endpoint == 'user.calendar' }}">📆 Team Calendar</a>
+      <a href="{{ url_for('user.dashboard') }}" class="{{ 'active' if request.endpoint == 'user.dashboard' }}">{{ ic.icon('dashboard') }} Dashboard</a>
+      <a href="{{ url_for('user.my_schedule') }}" class="{{ 'active' if request.endpoint == 'user.my_schedule' }}">{{ ic.icon('calendar-check') }} My Schedule</a>
+      <a href="{{ url_for('user.calendar') }}" class="{{ 'active' if request.endpoint == 'user.calendar' }}">{{ ic.icon('calendar') }} Team Calendar</a>
       {% if current_user['team_lead'] %}
-      <a href="{{ url_for('user.team') }}" class="{{ 'active' if request.endpoint in ['user.team','user.team_member'] }}">👥 My Team</a>
-      <a href="{{ url_for('user.team_schedule') }}" class="{{ 'active' if request.endpoint in ['user.team_schedule','user.team_schedule_service'] }}">🗓️ Team Schedule</a>
-      <a href="{{ url_for('user.team_trainings') }}" class="{{ 'active' if request.endpoint == 'user.team_trainings' }}">📚 Team Training</a>
-      <a href="{{ url_for('user.team_quizzes') }}" class="{{ 'active' if request.endpoint == 'user.team_quizzes' }}">🧠 Training Quizzes</a>
+      <a href="{{ url_for('user.team') }}" class="{{ 'active' if request.endpoint in ['user.team','user.team_member'] }}">{{ ic.icon('users') }} My Team</a>
+      <a href="{{ url_for('user.team_schedule') }}" class="{{ 'active' if request.endpoint in ['user.team_schedule','user.team_schedule_service'] }}">{{ ic.icon('clock') }} Team Schedule</a>
+      <a href="{{ url_for('user.team_trainings') }}" class="{{ 'active' if request.endpoint == 'user.team_trainings' }}">{{ ic.icon('book') }} Team Training</a>
+      <a href="{{ url_for('user.team_quizzes') }}" class="{{ 'active' if request.endpoint == 'user.team_quizzes' }}">{{ ic.icon('quiz') }} Training Quizzes</a>
       {% endif %}
-      <a href="{{ url_for('user.availability') }}" class="{{ 'active' if request.endpoint == 'user.availability' }}">📅 My Availability</a>
-      <a href="{{ url_for('user.services') }}" class="{{ 'active' if request.endpoint in ['user.services','user.service_detail'] }}">⛪ Services</a>
-      <a href="{{ url_for('user.swaps') }}" class="{{ 'active' if request.endpoint == 'user.swaps' }}">🔁 Role Swaps</a>
-      <a href="{{ url_for('user.trainings') }}" class="{{ 'active' if request.endpoint in ['user.trainings','user.training_detail'] }}">🎓 Training</a>
+      <a href="{{ url_for('user.availability') }}" class="{{ 'active' if request.endpoint == 'user.availability' }}">{{ ic.icon('availability') }} My Availability</a>
+      <a href="{{ url_for('user.services') }}" class="{{ 'active' if request.endpoint in ['user.services','user.service_detail'] }}">{{ ic.icon('sanctuary') }} Services</a>
+      <a href="{{ url_for('user.swaps') }}" class="{{ 'active' if request.endpoint == 'user.swaps' }}">{{ ic.icon('swap') }} Role Swaps</a>
+      <a href="{{ url_for('user.trainings') }}" class="{{ 'active' if request.endpoint in ['user.trainings','user.training_detail'] }}">{{ ic.icon('training') }} Training</a>
       {% endif %}
 
       {% if admin_features %}
       <p class="nav-label">{{ 'Administration' if is_full_admin else 'Assistant tools' }}</p>
-      <a href="{{ url_for('admin.dashboard') }}" class="{{ 'active' if request.endpoint == 'admin.dashboard' }}">🛠️ Admin Home</a>
-      {% if 'people' in admin_features %}<a href="{{ url_for('admin.users') }}" class="{{ 'active' if request.endpoint in ['admin.users','admin.user_detail'] }}">👥 People</a>{% endif %}
-      {% if 'teams' in admin_features %}<a href="{{ url_for('admin.teams') }}" class="{{ 'active' if request.endpoint == 'admin.teams' }}">🧩 Teams</a>{% endif %}
-      {% if 'roles' in admin_features %}<a href="{{ url_for('admin.roles') }}" class="{{ 'active' if request.endpoint == 'admin.roles' }}">🎛️ Roles</a>{% endif %}
-      {% if 'trainings' in admin_features %}<a href="{{ url_for('admin.trainings') }}" class="{{ 'active' if request.endpoint == 'admin.trainings' }}">📚 Trainings</a>{% endif %}
-      {% if 'services' in admin_features %}<a href="{{ url_for('admin.services') }}" class="{{ 'active' if request.endpoint in ['admin.services','admin.schedule'] }}">🗓️ Schedule</a>{% endif %}
-      {% if 'availability' in admin_features %}<a href="{{ url_for('admin.availability') }}" class="{{ 'active' if request.endpoint == 'admin.availability' }}">🟢 Availability Grid</a>{% endif %}
-      {% if 'swaps' in admin_features %}<a href="{{ url_for('admin.swaps') }}" class="{{ 'active' if request.endpoint == 'admin.swaps' }}">🔁 Swap Approvals</a>{% endif %}
-      {% if 'announcements' in admin_features %}<a href="{{ url_for('admin.announcements') }}" class="{{ 'active' if request.endpoint == 'admin.announcements' }}">📣 Announcements</a>{% endif %}
-      {% if 'polls' in admin_features %}<a href="{{ url_for('admin.polls') }}" class="{{ 'active' if request.endpoint == 'admin.polls' }}">📊 Polls</a>{% endif %}
-      {% if is_full_admin %}<a href="{{ url_for('admin.settings') }}" class="{{ 'active' if request.endpoint == 'admin.settings' }}">⚙️ Settings</a>{% endif %}
+      <a href="{{ url_for('admin.dashboard') }}" class="{{ 'active' if request.endpoint == 'admin.dashboard' }}">{{ ic.icon('home') }} Admin Home</a>
+      {% if 'people' in admin_features %}<a href="{{ url_for('admin.users') }}" class="{{ 'active' if request.endpoint in ['admin.users','admin.user_detail'] }}">{{ ic.icon('users') }} People</a>{% endif %}
+      {% if 'teams' in admin_features %}<a href="{{ url_for('admin.teams') }}" class="{{ 'active' if request.endpoint == 'admin.teams' }}">{{ ic.icon('teams') }} Teams</a>{% endif %}
+      {% if 'roles' in admin_features %}<a href="{{ url_for('admin.roles') }}" class="{{ 'active' if request.endpoint == 'admin.roles' }}">{{ ic.icon('roles') }} Roles</a>{% endif %}
+      {% if 'trainings' in admin_features %}<a href="{{ url_for('admin.trainings') }}" class="{{ 'active' if request.endpoint == 'admin.trainings' }}">{{ ic.icon('book') }} Trainings</a>{% endif %}
+      {% if 'services' in admin_features %}<a href="{{ url_for('admin.services') }}" class="{{ 'active' if request.endpoint in ['admin.services','admin.schedule'] }}">{{ ic.icon('calendar') }} Schedule</a>{% endif %}
+      {% if 'availability' in admin_features %}<a href="{{ url_for('admin.availability') }}" class="{{ 'active' if request.endpoint == 'admin.availability' }}">{{ ic.icon('grid') }} Availability Grid</a>{% endif %}
+      {% if 'swaps' in admin_features %}<a href="{{ url_for('admin.swaps') }}" class="{{ 'active' if request.endpoint == 'admin.swaps' }}">{{ ic.icon('swap') }} Swap Approvals</a>{% endif %}
+      {% if 'announcements' in admin_features %}<a href="{{ url_for('admin.announcements') }}" class="{{ 'active' if request.endpoint == 'admin.announcements' }}">{{ ic.icon('megaphone') }} Announcements</a>{% endif %}
+      {% if 'polls' in admin_features %}<a href="{{ url_for('admin.polls') }}" class="{{ 'active' if request.endpoint == 'admin.polls' }}">{{ ic.icon('poll') }} Polls</a>{% endif %}
+      {% if is_full_admin %}<a href="{{ url_for('admin.settings') }}" class="{{ 'active' if request.endpoint == 'admin.settings' }}">{{ ic.icon('settings') }} Settings</a>{% endif %}
       {% endif %}
 
       <p class="nav-label">Account</p>
       {% if not hide_vol %}
-      <a href="{{ url_for('user.notifications') }}" class="{{ 'active' if request.endpoint == 'user.notifications' }}">🔔 Notifications{% if unread_notifications %} <span class="nav-badge">{{ unread_notifications }}</span>{% endif %}</a>
+      <a href="{{ url_for('user.notifications') }}" class="{{ 'active' if request.endpoint == 'user.notifications' }}">{{ ic.icon('bell') }} Notifications{% if unread_notifications %} <span class="nav-badge">{{ unread_notifications }}</span>{% endif %}</a>
       {% endif %}
-      <a href="{{ url_for('user.profile') }}" class="{{ 'active' if request.endpoint == 'user.profile' }}">👤 My Profile</a>
+      <a href="{{ url_for('user.profile') }}" class="{{ 'active' if request.endpoint == 'user.profile' }}">{{ ic.icon('user') }} My Profile</a>
       {% if not hide_vol %}
-      <a href="{{ url_for('user.manual') }}" class="{{ 'active' if request.endpoint == 'user.manual' }}">📖 User Manual</a>
+      <a href="{{ url_for('user.manual') }}" class="{{ 'active' if request.endpoint == 'user.manual' }}">{{ ic.icon('book') }} User Manual</a>
       {% endif %}
     </nav>
 

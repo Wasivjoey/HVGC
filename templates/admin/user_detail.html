@@ -10,7 +10,7 @@
 </div>
 
 {% if not u['approved'] %}
-<div class="card" style="border-left:4px solid var(--amber);">
+<div class="card" style="border-color:#ead3a6;background:var(--amber-bg);">
   <h3>🆕 Pending approval</h3>
   <p class="muted" style="font-size:13px;margin-top:0;">This account cannot sign in until you approve it.
     {% if not u['email_verified'] %} The email is not yet verified — you can wait for the user, or mark it verified manually below.{% endif %}</p>

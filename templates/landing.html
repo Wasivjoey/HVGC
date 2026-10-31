@@ -3,16 +3,21 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>HVGC LINEUP · Serving-team scheduling made simple</title>
+  <title>HVGC LINEUP · Serving-team scheduling for the church</title>
+  <meta name="description" content="HVGC LINEUP is the scheduling home base for every ministry team — build rosters, track training, and keep volunteers in sync.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,560;9..144,600&family=Inter:wght@400;450;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <link rel="icon" href="{{ url_for('static', filename='logo.png') }}">
 </head>
-<body class="landing theme-{{ theme_month }}">
+{% import "_icons.html" as ic %}
+<body class="landing">
 
 <header class="lp-nav">
   <a class="lp-brand" href="{{ url_for('user.home') }}">
     <img src="{{ url_for('static', filename='logo.png') }}" alt="">
-    <span><strong>HVGC</strong> LINEUP</span>
+    <span><strong>HVGC</strong>&nbsp;<span>LINEUP</span></span>
   </a>
   <div class="lp-nav-actions">
     <a href="{{ url_for('auth.register') }}" class="btn btn-ghost btn-sm lp-hide-sm">Create account</a>
@@ -32,84 +37,76 @@
 
 <section class="lp-hero">
   <div class="lp-hero-inner">
-    <span class="lp-eyebrow">For every ministry team</span>
-    <h1>Get the right people, trained and ready, in every serving role.</h1>
-    <p class="lp-tagline">
-      Loving people wholeheartedly · Loving people unconditionally ·
-      Making disciples exponentially
+    <p class="lp-tagline lp-reveal lp-reveal-1">Loving people wholeheartedly<span class="sep">·</span>unconditionally<span class="sep">·</span>Making disciples exponentially</p>
+    <h1 class="lp-reveal lp-reveal-2">The right people, trained and ready, in every serving role.</h1>
+    <p class="lp-lede lp-reveal lp-reveal-3">
+      HVGC&nbsp;LINEUP is the scheduling home base for every ministry team —
+      worship, production, hospitality, kids and more. Build rosters in minutes,
+      make sure everyone is qualified and available, and keep the whole church
+      in sync with reminders that reach every inbox and calendar.
     </p>
-    <p class="lp-lede">
-      HVGC LINEUP is the scheduling home base for all your ministry teams —
-      worship, production, hospitality, kids, and more. Build service rosters in
-      minutes, make sure everyone is qualified and available, and keep the whole
-      team in sync — with reminders that land in their inbox and calendar.
-    </p>
-    <div class="lp-cta">
-      <a href="{{ url_for('auth.login') }}" class="btn">Sign in</a>
+    <div class="lp-cta lp-reveal lp-reveal-4">
+      <a href="{{ url_for('auth.login') }}" class="btn btn-lg-primary">Sign in</a>
       <a href="{{ url_for('auth.register') }}" class="btn btn-ghost">Create an account</a>
     </div>
-    <p class="lp-note">Already invited by a team lead? Just sign in.</p>
+    <p class="lp-note lp-reveal lp-reveal-4">Already invited by a team lead? Just sign in.</p>
   </div>
 </section>
 
 <section class="lp-section">
-  <h2 class="lp-h2">Everything your serving teams need</h2>
-  <p class="lp-sub">One place to plan the rota, track training, and keep volunteers in the loop.</p>
+  <div class="lp-section-head">
+    <h2 class="lp-h2">Everything your serving teams need</h2>
+    <p class="lp-sub">One calm home for planning the rota, tracking training, and keeping every volunteer in the loop.</p>
+  </div>
   <div class="lp-grid">
     <div class="lp-card">
-      <div class="lp-ico">🗓️</div>
+      <div class="lp-ico">{{ ic.icon('calendar-check') }}</div>
       <h3>Smart scheduling</h3>
-      <p>Build a roster for any service. Turn on the optional auto-scheduler to
-         fill roles automatically with people who are trained, available, and
-         not already booked — with the load shared fairly.</p>
+      <p>Build a roster for any service. Turn on the optional assistant to fill roles with people who are trained, available and not already booked — with serving shared fairly.</p>
     </div>
     <div class="lp-card">
-      <div class="lp-ico">🎓</div>
+      <div class="lp-ico">{{ ic.icon('training') }}</div>
       <h3>Training &amp; qualifications</h3>
-      <p>Tie required training to each role, so only qualified volunteers get
-         scheduled. Everyone can see what they need to complete to serve.</p>
+      <p>Tie required training to each role, so only qualified volunteers are scheduled. Everyone sees exactly what they need to complete to serve.</p>
     </div>
     <div class="lp-card">
-      <div class="lp-ico">📅</div>
+      <div class="lp-ico">{{ ic.icon('availability') }}</div>
       <h3>Availability</h3>
-      <p>Volunteers mark the days they can and can't serve. Schedulers see it at
-         a glance and never double-book someone who's away.</p>
+      <p>Volunteers mark the days they can and can't serve. Schedulers see it at a glance and never double-book someone who's away.</p>
     </div>
     <div class="lp-card">
-      <div class="lp-ico">📆</div>
+      <div class="lp-ico">{{ ic.icon('calendar') }}</div>
       <h3>Team calendar</h3>
-      <p>A month-at-a-glance view of every service and everyone serving on it —
-         colour-coded by person or by ministry team.</p>
+      <p>A month-at-a-glance view of every service and everyone serving on it, colour-coded by person or by ministry team.</p>
     </div>
     <div class="lp-card">
-      <div class="lp-ico">🔁</div>
+      <div class="lp-ico">{{ ic.icon('swap') }}</div>
       <h3>Role swaps</h3>
-      <p>Can't make it? Request cover in a tap. Another qualified volunteer picks
-         it up and a team lead approves the swap.</p>
+      <p>Can't make it? Request cover in a tap. Another qualified volunteer picks it up and a team lead approves the swap.</p>
     </div>
     <div class="lp-card">
-      <div class="lp-ico">🔔</div>
+      <div class="lp-ico">{{ ic.icon('bell') }}</div>
       <h3>Reminders &amp; invites</h3>
-      <p>Assignments arrive by email with a calendar invite (.ics) and automatic
-         reminders the day before and an hour before the service.</p>
+      <p>Assignments arrive by email with a calendar invite, plus an automatic reminder about a day and a half before the service.</p>
     </div>
     <div class="lp-card">
-      <div class="lp-ico">👥</div>
+      <div class="lp-ico">{{ ic.icon('users') }}</div>
       <h3>Teams &amp; leads</h3>
-      <p>Group volunteers into ministry teams. Team leads manage their own
-         people — assigning roles, tracking training, and resetting passwords.</p>
+      <p>Group volunteers into ministry teams. Team leads manage their own people — assigning roles, tracking training, resetting passwords.</p>
     </div>
     <div class="lp-card">
-      <div class="lp-ico">📣</div>
+      <div class="lp-ico">{{ ic.icon('megaphone') }}</div>
       <h3>Announcements &amp; polls</h3>
-      <p>Share news with the whole team and gather quick decisions with polls,
-         right on the volunteer dashboard.</p>
+      <p>Share news with the whole team and gather quick decisions with polls, right on the volunteer dashboard.</p>
     </div>
   </div>
 </section>
 
 <section class="lp-steps">
-  <h2 class="lp-h2">How it works</h2>
+  <div class="lp-section-head">
+    <h2 class="lp-h2">How it works</h2>
+    <p class="lp-sub">Three simple steps from sign-up to serving.</p>
+  </div>
   <div class="lp-step-row">
     <div class="lp-step"><span class="lp-num">1</span>
       <h3>Create your account</h3>
@@ -117,17 +114,18 @@
     </div>
     <div class="lp-step"><span class="lp-num">2</span>
       <h3>Set your roles &amp; availability</h3>
-      <p>Get your serving roles, finish any required training, and mark when you're free.</p>
+      <p>Receive your serving roles, finish any required training, and mark the days you're free.</p>
     </div>
     <div class="lp-step"><span class="lp-num">3</span>
       <h3>Show up ready</h3>
-      <p>Receive your schedule with calendar invites and reminders, and swap a slot if plans change.</p>
+      <p>Get your schedule with calendar invites and reminders — and swap a slot if plans change.</p>
     </div>
   </div>
 </section>
 
 <section class="lp-final">
   <h2>Ready to get your team in LINEUP?</h2>
+  <p>Bring every ministry together in one place and spend less time coordinating, more time serving.</p>
   <div class="lp-cta">
     <a href="{{ url_for('auth.login') }}" class="btn">Sign in</a>
     <a href="{{ url_for('auth.register') }}" class="btn btn-ghost">Create an account</a>
@@ -136,7 +134,7 @@
 
 <footer class="lp-foot">
   <img src="{{ url_for('static', filename='logo.png') }}" alt="">
-  <span>HVGC LINEUP · Loving people wholeheartedly · Loving people unconditionally · Making disciples exponentially</span>
+  <span>HVGC LINEUP · His Vineyard Global Church</span>
 </footer>
 
 </body>
