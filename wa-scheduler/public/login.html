@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>WA Scheduler · Sign in</title>
+  <link rel="stylesheet" href="/assets/styles.css" />
+</head>
+<body class="center">
+  <form id="login" class="card narrow">
+    <h1>WA Scheduler</h1>
+    <p class="muted">Schedule posts to your WhatsApp groups.</p>
+    <label>Dashboard password
+      <input type="password" id="password" autocomplete="current-password" required />
+    </label>
+    <button type="submit">Sign in</button>
+    <p id="err" class="error" hidden></p>
+  </form>
+  <script>
+    const form = document.getElementById('login');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const err = document.getElementById('err');
+      err.hidden = true;
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: document.getElementById('password').value }),
+      });
+      if (res.ok) { location.href = '/'; }
+      else { err.textContent = 'Wrong password'; err.hidden = false; }
+    });
+  </script>
+</body>
+</html>
