@@ -18,8 +18,6 @@ import sqlite3
 import time
 from datetime import datetime, date
 
-from werkzeug.security import generate_password_hash
-
 DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
 USE_PG = DATABASE_URL.startswith(("postgres://", "postgresql://"))
 DB_PATH = os.environ.get("DATABASE_PATH", os.path.join(os.path.dirname(__file__), "avteam.db"))
@@ -594,26 +592,11 @@ def _seed(conn):
         )
         conn.commit()
 
-    # Seed an initial admin account once.
-    admin = conn.execute(
-        "SELECT id FROM users WHERE email = ?", ("admin@avteam.app",)
-    ).fetchone()
-    if admin is None:
-        conn.execute(
-            "INSERT INTO users (name, username, email, phone, password_hash, is_admin,"
-            " is_active, email_verified, approved, team_id, created_at)"
-            " VALUES (?, ?, ?, ?, ?, 1, 1, 1, 1, ?, ?)",
-            (
-                "Team Administrator",
-                "admin",
-                "admin@avteam.app",
-                "",
-                generate_password_hash("admin123", method="pbkdf2:sha256"),
-                team_id,
-                now_iso(),
-            ),
-        )
-        conn.commit()
+    # No default administrator is seeded on purpose: a built-in password would be
+    # the same on every deployment and is published in the source, so it would be
+    # a standing way in. Instead the *first person to register* on a fresh database
+    # becomes the administrator (see auth.register). That leaves no well-known
+    # credentials to change or forget.
 
     # Seed a starter required training per role once.
     existing_training = conn.execute("SELECT COUNT(*) AS c FROM trainings").fetchone()["c"]

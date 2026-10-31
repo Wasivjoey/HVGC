@@ -406,10 +406,10 @@ def reset_user_password(user_id):
 
     temp = request.form.get("temp_password", "").strip()
     if not temp:
-        temp = secrets.token_urlsafe(6)          # auto-generate if none supplied
-    elif len(temp) < 6:
+        temp = secrets.token_urlsafe(8)          # auto-generate if none supplied
+    elif len(temp) < 8:
         conn.close()
-        flash("Temporary password must be at least 6 characters.", "danger")
+        flash("Temporary password must be at least 8 characters.", "danger")
         return redirect(url_for("admin.user_detail", user_id=user_id))
 
     conn.execute(
@@ -746,7 +746,13 @@ def remind_trainings():
     for r in rows:
         if send_training_reminder(conn, r["user_id"]):
             people += 1
-    conn.commit()
+        # Commit after each person. Each reminder also sends an email, which can be
+        # slow; committing per person means a request that runs long (and gets cut
+        # off by the server timeout) still keeps the notifications already sent,
+        # instead of rolling the whole batch back after the emails went out.
+        # shortcut: emails are still sent inline; for a very large team this belongs
+        # in a background job rather than the web request.
+        conn.commit()
     conn.close()
     if people:
         flash(f"Sent training reminders to {people} "

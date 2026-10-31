@@ -5,6 +5,7 @@ import io
 import os
 import re
 import smtplib
+import time
 import uuid
 from datetime import date
 from email.message import EmailMessage
@@ -343,14 +344,7 @@ def parse_video(url):
     low = url.lower()
 
     # YouTube — watch?v=, youtu.be/, /embed/, /shorts/
-    yt_id = None
-    m = re.search(r"(?:youtube\.com/(?:watch\?v=|embed/|shorts/)|youtu\.be/)([A-Za-z0-9_-]{11})", url)
-    if m:
-        yt_id = m.group(1)
-    elif "youtube.com" in low:
-        q = parse_qs(urlparse(url).query)
-        if q.get("v"):
-            yt_id = q["v"][0]
+    yt_id = _youtube_id(url)
     if yt_id:
         return {"kind": "youtube",
                 "src": f"https://www.youtube.com/embed/{yt_id}?enablejsapi=1&rel=0",
@@ -466,6 +460,33 @@ def current_user():
     g._cached_user_id = uid
     g._cached_user = user
     return user
+
+
+# --------------------------------------------------------------- rate limiting
+_RATE_BUCKETS = {}
+
+
+def rate_limited(key, max_attempts=8, window_seconds=300):
+    """Record an attempt under ``key`` and return True once it has been seen more
+    than ``max_attempts`` times within the trailing ``window_seconds``.
+
+    Used to blunt password-guessing on the sign-in / reset endpoints. It's a
+    small in-process counter — simple and dependency-free, which is the right
+    size for one church on a couple of workers.
+    shortcut: the counter lives in each worker's memory, so it isn't shared
+    across gunicorn workers and resets on redeploy (an attacker effectively gets
+    max_attempts × worker_count tries). Move to a shared store if that matters.
+    """
+    now = time.time()
+    hits = [t for t in _RATE_BUCKETS.get(key, ()) if now - t < window_seconds]
+    hits.append(now)
+    _RATE_BUCKETS[key] = hits
+    # Keep the dict from growing without bound as keys (IPs/usernames) churn.
+    if len(_RATE_BUCKETS) > 4096:
+        for k, v in list(_RATE_BUCKETS.items()):
+            if not v or now - v[-1] > window_seconds:
+                _RATE_BUCKETS.pop(k, None)
+    return len(hits) > max_attempts
 
 
 def login_required(view):

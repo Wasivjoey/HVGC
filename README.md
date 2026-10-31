@@ -56,11 +56,12 @@ python3 app.py
 
 Open **http://localhost:8000**.
 
-**Seeded admin login:** `admin@avteam.app` / `admin123`
+**First run:** the **first person to register** on a fresh database becomes the
+administrator automatically (approved and verified), so you sign in as yourself
+with your own password — there is no shared default password to change or leak.
 
-> The first person to register on a fresh database also becomes an admin, so the
-> app is usable out of the box. The database (`avteam.db`) and default roles,
-> trainings, and sample services are created automatically on first run.
+> The database (`avteam.db`) and default roles, trainings, and sample services
+> are created automatically on first run.
 
 ---
 
@@ -78,9 +79,10 @@ database** and the **web service** together, wired up automatically.
    ```
 2. In Render: **New ➜ Blueprint**, select your repo, and click **Apply**. Render
    reads `render.yaml` and creates the database + web service.
-3. First deploy creates the schema and a starter admin automatically. Sign in at
-   `https://<your-service>.onrender.com` with **`admin` / `admin123`** and change
-   the password immediately (Profile, or via Forgot password).
+3. First deploy creates the schema automatically. Open
+   `https://<your-service>.onrender.com`, click **Register**, and the first
+   account you create becomes the administrator (approved and verified) — no
+   shared default password is ever created.
 
 What the Blueprint sets for you:
 - **`DATABASE_URL`** — injected from the managed Postgres database.

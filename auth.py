@@ -16,7 +16,7 @@ from flask import (
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from db import get_db, now_iso, execute_returning_id, default_team_id, local_datetime
-from helpers import send_email, build_email
+from helpers import send_email, build_email, rate_limited
 
 bp = Blueprint("auth", __name__)
 
@@ -57,8 +57,8 @@ def register():
             errors.append("Username must be 3-20 characters: letters, numbers, or underscore.")
         if not email or "@" not in email:
             errors.append("A valid email is required.")
-        if len(password) < 6:
-            errors.append("Password must be at least 6 characters.")
+        if len(password) < 8:
+            errors.append("Password must be at least 8 characters.")
         if password != confirm:
             errors.append("Passwords do not match.")
 
@@ -144,6 +144,9 @@ def verify_email(token):
 @bp.route("/resend-verification", methods=["POST"])
 def resend_verification():
     identifier = request.form.get("identifier", "").strip().lower()
+    if rate_limited(f"resend:{request.remote_addr}", max_attempts=6, window_seconds=600):
+        flash("Too many requests. Please wait a few minutes and try again.", "info")
+        return redirect(url_for("auth.login"))
     conn = get_db()
     user = conn.execute(
         "SELECT * FROM users WHERE (email = ? OR username = ?) AND email_verified = 0",
@@ -167,6 +170,10 @@ def forgot_password():
     dev_link = None
     if request.method == "POST":
         identifier = request.form.get("identifier", "").strip().lower()
+        if rate_limited(f"forgot:{request.remote_addr}", max_attempts=6,
+                        window_seconds=600):
+            flash("Too many requests. Please wait a few minutes and try again.", "warning")
+            return render_template("auth/forgot.html", submitted=True)
         conn = get_db()
         user = conn.execute(
             "SELECT * FROM users WHERE email = ? OR username = ?",
@@ -215,8 +222,8 @@ def reset_password(token):
         password = request.form.get("password", "")
         confirm = request.form.get("confirm", "")
         errors = []
-        if len(password) < 6:
-            errors.append("Password must be at least 6 characters.")
+        if len(password) < 8:
+            errors.append("Password must be at least 8 characters.")
         if password != confirm:
             errors.append("Passwords do not match.")
         if errors:
@@ -245,6 +252,11 @@ def login():
     if request.method == "POST":
         identifier = request.form.get("identifier", "").strip().lower()
         password = request.form.get("password", "")
+        if rate_limited(f"login:{request.remote_addr}:{identifier}",
+                        max_attempts=8, window_seconds=300):
+            flash("Too many sign-in attempts. Please wait a few minutes and try again.",
+                  "danger")
+            return render_template("auth/login.html", identifier=identifier)
         conn = get_db()
         user = conn.execute(
             "SELECT * FROM users WHERE email = ? OR username = ?",

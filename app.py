@@ -10,7 +10,7 @@ Production (cloud):
 
 import os
 
-from flask import Flask, redirect, url_for, session, request
+from flask import Flask, redirect, url_for, session, request, abort
 
 from db import init_db
 from helpers import current_user
@@ -24,6 +24,9 @@ def create_app():
     app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-change-me-in-production")
     app.config["SESSION_COOKIE_HTTPONLY"] = True
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+    # Only send the session cookie over HTTPS in production. Keyed off DATABASE_URL
+    # (set on the cloud host, unset for local SQLite) so local http:// still works.
+    app.config["SESSION_COOKIE_SECURE"] = bool(os.environ.get("DATABASE_URL"))
 
     # Behind Render's TLS proxy, honour X-Forwarded-* so verification links built
     # with url_for(_external=True) use the real https host (not internal http).
@@ -155,6 +158,20 @@ def create_app():
         finally:
             conn.close()
         return {"unread_notifications": count}
+
+    # CSRF defence for state-changing requests. Every form on the site posts to
+    # the same origin, so a request that carries an Origin/Referer from a
+    # different host is a cross-site (forged) submission and is refused. Combined
+    # with the SameSite=Lax cookie above this blocks CSRF without a per-form
+    # token. Requests with neither header (e.g. the cron endpoint called by
+    # curl) are allowed through — those are guarded by their own secret.
+    @app.before_request
+    def _csrf_origin_guard():
+        if request.method in ("POST", "PUT", "PATCH", "DELETE"):
+            from urllib.parse import urlparse
+            source = request.headers.get("Origin") or request.headers.get("Referer")
+            if source and urlparse(source).netloc != request.host:
+                abort(400)
 
     # If an admin reset a user's password, force them to set a new one before
     # they can use anything else.

@@ -373,7 +373,7 @@ details.inline-edit[open] { margin-top: 10px; }
 .cal-role .cr-role { color: var(--muted); }
 .cal-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 4px; vertical-align: middle; flex-shrink: 0; }
 .cal-role .cn { font-weight: 600; }
-.cal-role.me { background: rgba(180,71,42,.12); border-radius: 4px; padding: 0 4px; box-shadow: inset 2px 0 0 var(--brand); }
+.cal-role.me { background: rgba(180,71,42,.14); border-radius: 5px; padding: 0 5px; font-weight: 600; }
 .cal-noone { font-size: 11px; color: var(--muted); font-style: italic; }
 
 /* polls */
@@ -487,11 +487,6 @@ body.landing { background: var(--paper); color: var(--ink); }
   font-size: clamp(2.6rem, 6vw, 4.4rem); line-height: 1.04; letter-spacing: -.025em; margin: 0 0 20px;
   color: var(--ink); font-weight: 560;
 }
-.lp-tagline {
-  font-size: 15px; font-weight: 600; margin: 0 auto 22px; max-width: 640px; letter-spacing: .02em;
-  color: var(--brand-ink); text-transform: uppercase;
-}
-.lp-tagline .sep { color: var(--gold); margin: 0 6px; }
 .lp-lede { font-size: clamp(1.05rem, 1.6vw, 1.22rem); color: var(--ink-soft); margin: 0 auto 32px; max-width: 60ch; line-height: 1.6; }
 .lp-cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
 .lp-cta .btn { padding: 13px 26px; font-size: 15px; }
@@ -546,6 +541,12 @@ body.landing { background: var(--paper); color: var(--ink); }
 .lp-final .lp-cta .btn:hover { background: #fff; }
 .lp-final .lp-cta .btn-ghost { background: rgba(247,239,226,.12); color: #fdf8f0; border: 1px solid rgba(247,239,226,.32); }
 .lp-final .lp-cta .btn-ghost:hover { background: rgba(247,239,226,.2); }
+/* The church's creed, as a quiet reverent close (not an eyebrow above a heading). */
+.lp-creed {
+  margin: 34px auto 0; max-width: 48ch; font-family: var(--font-display);
+  font-size: 1.1rem; line-height: 1.5; color: rgba(247,239,226,.72); font-weight: 400;
+}
+.lp-creed .sep { color: var(--gold); margin: 0 9px; }
 
 .lp-foot {
   display: flex; align-items: center; justify-content: center; gap: 10px; text-align: center;
@@ -565,6 +566,5 @@ body.landing { background: var(--paper); color: var(--ink); }
   .lp-reveal-1 { animation-delay: .05s; }
   .lp-reveal-2 { animation-delay: .16s; }
   .lp-reveal-3 { animation-delay: .27s; }
-  .lp-reveal-4 { animation-delay: .38s; }
   @keyframes lpRise { to { opacity: 1; transform: none; } }
 }

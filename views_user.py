@@ -139,8 +139,10 @@ def vote_poll(poll_id):
         conn.close()
         flash("That poll has closed.", "warning")
         return redirect(url_for("user.dashboard"))
-    option_id = request.form.get("option_id", "")
-    valid = conn.execute(
+    # Parse to an int up front: a blank or non-numeric value must not reach the
+    # query — comparing an integer column to '' raises an error on Postgres.
+    option_id = request.form.get("option_id", type=int)
+    valid = option_id and conn.execute(
         "SELECT id FROM poll_options WHERE id = ? AND poll_id = ?", (option_id, poll_id)
     ).fetchone()
     if valid:
@@ -943,8 +945,8 @@ def change_password():
         errors = []
         if not forced and not check_password_hash(user["password_hash"], current):
             errors.append("Your current password is incorrect.")
-        if len(new) < 6:
-            errors.append("New password must be at least 6 characters.")
+        if len(new) < 8:
+            errors.append("New password must be at least 8 characters.")
         if new != confirm:
             errors.append("New passwords do not match.")
         if not forced and new == current and not errors:
@@ -1014,7 +1016,9 @@ def team_remind_trainings():
         target = conn.execute("SELECT * FROM users WHERE id = ?", (r["user_id"],)).fetchone()
         if can_manage_member(actor, target) and send_training_reminder(conn, r["user_id"]):
             people += 1
-    conn.commit()
+        # Commit per person so a slow email run that gets cut off by the server
+        # timeout still keeps the reminders already sent (see admin.remind_trainings).
+        conn.commit()
     conn.close()
     if people:
         flash(f"Sent training reminders to {people} team "
@@ -1143,10 +1147,10 @@ def team_member_reset_password(user_id):
     actor = current_user()
     conn = get_db()
     m = _member_or_403(actor, user_id, conn)
-    temp = request.form.get("temp_password", "").strip() or secrets.token_urlsafe(6)
-    if len(temp) < 6:
+    temp = request.form.get("temp_password", "").strip() or secrets.token_urlsafe(8)
+    if len(temp) < 8:
         conn.close()
-        flash("Temporary password must be at least 6 characters.", "danger")
+        flash("Temporary password must be at least 8 characters.", "danger")
         return redirect(url_for("user.team_member", user_id=user_id))
     conn.execute("UPDATE users SET password_hash = ?, must_change_password = 1 WHERE id = ?",
                  (generate_password_hash(temp, method="pbkdf2:sha256"), user_id))
@@ -1349,18 +1353,42 @@ def team_unassign(assignment_id):
 
 
 # ---------------------------------------------- team-lead training quizzes
+def _quiz_training_or_redirect(actor, training_id, conn):
+    """Return the training if the actor may manage its quiz: full admins may
+    manage any; a team lead only trainings tied to one of their own team's roles.
+    Closes the connection and returns None otherwise."""
+    t = conn.execute(
+        "SELECT t.*, r.team_id AS role_team FROM trainings t"
+        " LEFT JOIN roles r ON r.id = t.role_id WHERE t.id = ?", (training_id,),
+    ).fetchone()
+    if t is not None and (actor["is_admin"] or t["role_team"] == actor["team_id"]):
+        return t
+    conn.close()
+    return None
+
+
 @bp.route("/team/quizzes")
 @lead_or_admin_required
 def team_quizzes():
     """Team leads generate quizzes from training material. Volunteers get the
     quiz once they've completed that training."""
+    actor = current_user()
     conn = get_db()
-    trainings = conn.execute(
+    # Full admins see every training; a team lead only their own team's role
+    # trainings — the same scope they can author and assign.
+    base = (
         "SELECT t.*, r.name AS role_name,"
         " (SELECT id FROM quizzes q WHERE q.training_id = t.id) AS quiz_id,"
         " (SELECT questions FROM quizzes q WHERE q.training_id = t.id) AS quiz_questions"
-        " FROM trainings t LEFT JOIN roles r ON r.id = t.role_id ORDER BY t.title"
-    ).fetchall()
+        " FROM trainings t {join} roles r ON r.id = t.role_id {where}ORDER BY t.title"
+    )
+    if actor["is_admin"]:
+        trainings = conn.execute(base.format(join="LEFT JOIN", where="")).fetchall()
+    else:
+        trainings = conn.execute(
+            base.format(join="JOIN", where="WHERE r.team_id = ? "),
+            (actor["team_id"],),
+        ).fetchall()
     view = []
     for t in trainings:
         n = 0
@@ -1384,10 +1412,9 @@ def team_quizzes():
 def generate_quiz(training_id):
     actor = current_user()
     conn = get_db()
-    t = conn.execute("SELECT * FROM trainings WHERE id = ?", (training_id,)).fetchone()
+    t = _quiz_training_or_redirect(actor, training_id, conn)
     if t is None:
-        conn.close()
-        flash("Training not found.", "danger")
+        flash("That training isn't one you can manage quizzes for.", "danger")
         return redirect(url_for("user.team_quizzes"))
     if not quiz_ai_enabled():
         conn.close()
@@ -1419,7 +1446,11 @@ def generate_quiz(training_id):
 @bp.route("/team/quizzes/<int:training_id>/delete", methods=["POST"])
 @lead_or_admin_required
 def delete_quiz(training_id):
+    actor = current_user()
     conn = get_db()
+    if _quiz_training_or_redirect(actor, training_id, conn) is None:
+        flash("That training isn't one you can manage quizzes for.", "danger")
+        return redirect(url_for("user.team_quizzes"))
     conn.execute("DELETE FROM quizzes WHERE training_id = ?", (training_id,))
     conn.commit()
     conn.close()
