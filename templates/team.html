@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "_icons.html" as ic %}
 {% block title %}My Team · HVGC LINEUP{% endblock %}
 {% block body %}
 <div class="page-head">
@@ -8,7 +9,7 @@
   </div>
   <form method="post" action="{{ url_for('user.team_remind_trainings') }}"
         onsubmit="return confirm('Email a training reminder to every team member who has outstanding training?');">
-    <button class="btn btn-ghost">🔔 Remind outstanding training</button>
+    <button class="btn btn-ghost">{{ ic.icon('bell') }} Remind outstanding training</button>
   </form>
 </div>
 

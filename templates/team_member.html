@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "_icons.html" as ic %}
 {% block title %}{{ u['name'] }} · My Team{% endblock %}
 {% block body %}
 <div class="page-head">
@@ -10,7 +11,7 @@
 </div>
 
 <div class="card">
-  <h3>🔑 Reset password</h3>
+  <h3>{{ ic.icon('key') }} Reset password</h3>
   <p class="muted" style="font-size:13px;margin-top:0;">Sets a temporary password; the member
     must choose a new one at their next sign-in.</p>
   <form method="post" action="{{ url_for('user.team_member_reset_password', user_id=u['id']) }}"
@@ -23,7 +24,7 @@
 
 <div class="grid grid-2">
   <div class="card">
-    <h3>🎛️ Roles</h3>
+    <h3>{{ ic.icon('roles') }} Roles</h3>
     <p class="muted" style="font-size:13px;">Assigning a role auto-queues its required training.</p>
     {% for rv in role_view %}
     <div class="list-item">
@@ -48,9 +49,9 @@
 
   <div class="card">
     <div class="list-item" style="border:none;padding:0;margin-bottom:6px;">
-      <h3 style="margin:0;">🎓 Training</h3>
+      <h3 style="margin:0;">{{ ic.icon('training') }} Training</h3>
       <form method="post" action="{{ url_for('user.team_remind_member', user_id=u['id']) }}" class="inline-form">
-        <button class="btn btn-sm btn-ghost">🔔 Send reminder</button>
+        <button class="btn btn-sm btn-ghost">{{ ic.icon('bell') }} Send reminder</button>
       </form>
     </div>
     {% for tv in training_view %}

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "_icons.html" as ic %}
 {% block title %}Schedule {{ service['title'] }} · Admin{% endblock %}
 {% block body %}
 <div class="page-head">
@@ -31,7 +32,7 @@
 
 <div class="card auto-card">
   <details {{ 'open' if roster|length == 0 }}>
-    <summary><h3 style="display:inline;">⚡ Auto-schedule <span class="badge badge-gray">optional</span></h3></summary>
+    <summary><h3 style="display:inline;">{{ ic.icon('bolt') }} Auto-schedule <span class="badge badge-gray">optional</span></h3></summary>
     <p class="muted" style="font-size:13px;margin-top:8px;">
       Tick the roles needed for this day and generate a roster automatically. Only
       people who are <strong>trained</strong> for the role and <strong>not marked
@@ -114,10 +115,10 @@
 </div>
 
 <div class="card">
-  <h3>📄 Programme flow document</h3>
+  <h3>{{ ic.icon('document') }} Programme flow document</h3>
   {% if service['doc_filename'] %}
     <div class="list-item">
-      <div>📎 <a href="{{ url_for('user.service_document', service_id=service['id']) }}" target="_blank" rel="noopener">{{ service['doc_original'] }}</a></div>
+      <div>{{ ic.icon('paperclip') }} <a href="{{ url_for('user.service_document', service_id=service['id']) }}" target="_blank" rel="noopener">{{ service['doc_original'] }}</a></div>
       <form method="post" action="{{ url_for('admin.remove_service_document', service_id=service['id']) }}" class="inline-form" onsubmit="return confirm('Remove this document?');">
         <button class="btn btn-sm btn-ghost">Remove</button>
       </form>

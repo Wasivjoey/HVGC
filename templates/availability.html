@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "_icons.html" as ic %}
 {% block title %}My Availability · HVGC LINEUP{% endblock %}
 {% block body %}
 <div class="page-head">
@@ -16,11 +17,11 @@
       <div class="toggle-row">
         <label class="toggle">
           <input type="radio" name="status" value="available" checked>
-          <span>✅ Available</span>
+          <span>{{ ic.icon('check') }} Available</span>
         </label>
         <label class="toggle">
           <input type="radio" name="status" value="unavailable">
-          <span>⛔ Unavailable</span>
+          <span>{{ ic.icon('x') }} Unavailable</span>
         </label>
       </div>
       <div class="form-row">

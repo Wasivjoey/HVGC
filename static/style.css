@@ -119,6 +119,8 @@ nav a.active svg { stroke: #fff; }
 .page-head p { margin: 0; color: var(--muted); max-width: 62ch; }
 h2 { font-size: 20px; margin: 30px 0 13px; letter-spacing: -.01em; }
 .muted { color: var(--muted); }
+.card h3 > svg:first-child, .page-head h1 > svg:first-child { width: 1.02em; height: 1.02em; vertical-align: -.15em; margin-right: .42em; color: var(--brand-ink); stroke-width: 1.85; }
+.badge > svg:first-child { width: 13px; height: 13px; vertical-align: -2px; margin-right: 3px; }
 
 /* ---------------------------------------------------------------- cards */
 .card {
@@ -313,8 +315,8 @@ details.inline-edit[open] { margin-top: 10px; }
 .sec-ic svg { width: 18px; height: 18px; }
 .sec-head h3 { margin: 0; font-size: 16px; font-family: var(--font-ui); font-weight: 650; }
 .date-chip { display: flex; flex-direction: column; align-items: center; justify-content: center;
-  width: 48px; height: 48px; border-radius: 12px; background: var(--brand-soft); color: var(--brand-ink);
-  flex-shrink: 0; line-height: 1; border: 1px solid #ecd2c2; }
+  width: 50px; height: 50px; padding: 5px; border-radius: 12px; background: var(--brand-soft); color: var(--brand-ink);
+  flex-shrink: 0; line-height: 1.15; border: 1px solid #ecd2c2; gap: 2px; }
 .date-chip .d-mon { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
 .date-chip .d-day { font-size: 18px; font-weight: 700; font-family: var(--font-display); }
 .li-lead { display: flex; align-items: center; gap: 13px; }
@@ -332,6 +334,8 @@ details.inline-edit[open] { margin-top: 10px; }
 .role-check { display: flex; align-items: center; gap: 8px; padding: 9px 11px; border: 1px solid var(--line); border-radius: 9px; cursor: pointer; font-size: 14px; transition: border-color .12s, background .12s; }
 .role-check:hover { border-color: #d6c7ad; background: var(--line-soft); }
 .role-check input { width: auto; margin: 0; }
+.role-check svg { width: 17px; height: 17px; color: var(--brand-ink); flex-shrink: 0; }
+.role-check .rc-ic { display: inline-flex; }
 .quiz-opt { display: flex; align-items: center; gap: 10px; padding: 11px 13px; margin-top: 8px; border: 1px solid var(--line); border-radius: 10px; cursor: pointer; font-size: 15px; transition: border-color .12s, background .12s; }
 .quiz-opt:hover { background: var(--line-soft); border-color: #d6c7ad; }
 .quiz-opt input { width: auto; margin: 0; }

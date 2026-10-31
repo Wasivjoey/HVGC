@@ -1,9 +1,10 @@
 {% extends "base.html" %}
+{% import "_icons.html" as ic %}
 {% block title %}Quiz · {{ title }}{% endblock %}
 {% block body %}
 <div class="page-head">
   <div>
-    <h1>🧠 {{ title }} — quiz</h1>
+    <h1>{{ ic.icon('quiz') }} {{ title }} — quiz</h1>
     <p>Answer each question, then submit to see your score.
       {% if best and best['s'] is not none %} Your best so far: <strong>{{ best['s'] }}/{{ best['total'] }}</strong>.{% endif %}</p>
   </div>

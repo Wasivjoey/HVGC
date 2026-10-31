@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "_icons.html" as ic %}
 {% block title %}Training Quizzes · HVGC LINEUP{% endblock %}
 {% block body %}
 <div class="page-head">
@@ -11,7 +12,7 @@
 
 {% if not ai_enabled %}
 <div class="card" style="border-color:var(--amber);">
-  <p style="margin:0;">⚠️ Quiz generation needs an Anthropic API key. Ask an administrator to set
+  <p style="margin:0;">{{ ic.icon('alert') }} Quiz generation needs an Anthropic API key. Ask an administrator to set
   <code>ANTHROPIC_API_KEY</code> in the app's environment, then the <strong>Generate</strong> buttons below will work.</p>
 </div>
 {% endif %}
@@ -27,7 +28,7 @@
         <td>
           {% if tv['questions'] %}<span class="badge badge-green">{{ tv['questions'] }} questions</span>
           {% else %}<span class="muted">None yet</span>{% endif %}
-          {% if tv['has_video'] %}<span class="badge badge-gray" title="The attached YouTube video's transcript is used as source material">🎬 video</span>{% endif %}
+          {% if tv['has_video'] %}<span class="badge badge-gray" title="The attached YouTube video's transcript is used as source material">{{ ic.icon('video') }} video</span>{% endif %}
         </td>
         <td class="row-actions">
           {% if tv['has_material'] %}

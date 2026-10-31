@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "_icons.html" as ic %}
 {% block title %}{{ t['title'] }} · Training{% endblock %}
 {% block body %}
 <div class="page-head">
@@ -18,7 +19,7 @@
 
   {% if video %}
   <div class="divider"></div>
-  <h3 style="margin-bottom:10px;">🎬 Training video</h3>
+  <h3 style="margin-bottom:10px;">{{ ic.icon('video') }} Training video</h3>
   {% if video['kind'] in ['youtube', 'vimeo'] %}
     <div class="video-wrap">
       <iframe id="training-video"
@@ -58,7 +59,7 @@
   {% if needs_watch %}
     <p class="tag" id="watch-hint">▶ Watch the full video above to enable this — skipping ahead is disabled.</p>
   {% elif playable %}
-    <p class="tag">✅ Video watched.</p>
+    <p class="tag">Video watched.</p>
   {% endif %}
 </form>
 {% else %}
@@ -67,14 +68,14 @@
 
 {% if has_quiz %}
 <div class="card" style="margin-top:16px;">
-  <h3>🧠 Knowledge check</h3>
+  <h3>{{ ic.icon('quiz') }} Knowledge check</h3>
   {% if t['status'] == 'completed' %}
     <p class="muted" style="font-size:14px;margin-top:0;">A {{ quiz_len }}-question quiz is available for this training.
       {% if quiz_best and quiz_best['s'] is not none %}<br>Your best score: <strong>{{ quiz_best['s'] }}/{{ quiz_best['total'] }}</strong>.{% endif %}
     </p>
     <a href="{{ url_for('user.take_quiz', training_id=t['training_id']) }}" class="btn">{{ 'Retake the quiz' if (quiz_best and quiz_best['s'] is not none) else 'Take the quiz' }}</a>
   {% else %}
-    <p class="muted" style="font-size:14px;margin:0;">🔒 A quiz unlocks here once you mark this training complete.</p>
+    <p class="muted" style="font-size:14px;margin:0;">{{ ic.icon('lock') }} A quiz unlocks here once you mark this training complete.</p>
   {% endif %}
 </div>
 {% endif %}
@@ -99,7 +100,7 @@
     if (window.__watched) { return; }
     window.__watched = true;
     try { fetch(COMPLETE_URL, {method: 'POST'}); } catch (e) {}
-    enableButton('✅ Video watched — you can mark this training complete now.');
+    enableButton('Video watched — you can mark this training complete now.');
   }
   // Advance the watched marker only for small, forward, continuous steps.
   function advance(t) {

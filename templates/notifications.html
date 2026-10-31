@@ -1,9 +1,10 @@
 {% extends "base.html" %}
+{% import "_icons.html" as ic %}
 {% block title %}Notifications · HVGC LINEUP{% endblock %}
 {% block body %}
 <div class="page-head">
   <div>
-    <h1>🔔 Notifications</h1>
+    <h1>{{ ic.icon('bell') }} Notifications</h1>
     <p>Updates about your roles, training, schedule, and team announcements.</p>
   </div>
   {% if items %}

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "_icons.html" as ic %}
 {% block title %}My Schedule · HVGC LINEUP{% endblock %}
 {% block body %}
 <div class="page-head">
@@ -7,24 +8,24 @@
     <p>Everything you're scheduled to serve with your ministry team.</p>
   </div>
   <div class="row-actions">
-    <a href="{{ url_for('user.calendar') }}" class="btn btn-ghost">📆 Team calendar</a>
-    {% if upcoming %}<a href="{{ url_for('user.schedule_calendar') }}" class="btn">📅 Add all to calendar</a>{% endif %}
+    <a href="{{ url_for('user.calendar') }}" class="btn btn-ghost">{{ ic.icon('calendar') }} Team calendar</a>
+    {% if upcoming %}<a href="{{ url_for('user.schedule_calendar') }}" class="btn">{{ ic.icon('download') }} Add all to calendar</a>{% endif %}
   </div>
 </div>
 
 <div class="dash-stats">
-  <div class="tile"><span class="tile-ic ic-blue">📅</span>
+  <div class="tile"><span class="tile-ic ic-blue">{{ ic.icon('calendar-check') }}</span>
     <span><span class="tile-n">{{ counts['upcoming'] }}</span><div class="tile-l">Upcoming</div></span></div>
-  <div class="tile"><span class="tile-ic ic-green">✓</span>
+  <div class="tile"><span class="tile-ic ic-green">{{ ic.icon('check') }}</span>
     <span><span class="tile-n">{{ counts['confirmed'] }}</span><div class="tile-l">Confirmed</div></span></div>
-  <div class="tile"><span class="tile-ic ic-amber">⏳</span>
+  <div class="tile"><span class="tile-ic ic-amber">{{ ic.icon('clock') }}</span>
     <span><span class="tile-n">{{ counts['unconfirmed'] }}</span><div class="tile-l">Awaiting your confirmation</div></span></div>
-  <div class="tile"><span class="tile-ic ic-violet">🎖️</span>
+  <div class="tile"><span class="tile-ic ic-violet">{{ ic.icon('check-shield') }}</span>
     <span><span class="tile-n">{{ counts['served'] }}</span><div class="tile-l">Past services</div></span></div>
 </div>
 
 <div class="card card-accent">
-  <div class="sec-head"><span class="sec-ic ic-blue">📅</span><h3>Upcoming</h3></div>
+  <div class="sec-head"><span class="sec-ic ic-blue">{{ ic.icon('calendar-check') }}</span><h3>Upcoming</h3></div>
   {% if upcoming %}
     {% for a in upcoming %}
     <div class="list-item">
@@ -47,23 +48,23 @@
             <button class="btn btn-sm btn-green">Confirm</button>
           </form>
         {% endif %}
-        <a href="{{ url_for('user.service_calendar', service_id=a['service_id']) }}" class="btn btn-sm btn-ghost" title="Add to calendar">📅</a>
+        <a href="{{ url_for('user.service_calendar', service_id=a['service_id']) }}" class="btn btn-sm btn-ghost" title="Add to calendar" aria-label="Add to calendar">{{ ic.icon('calendar') }}</a>
         <a href="{{ url_for('user.service_detail', service_id=a['service_id']) }}" class="btn btn-sm btn-ghost">View</a>
       </div>
     </div>
     {% endfor %}
   {% else %}
-    <div class="empty">You have no upcoming assignments. 🎉</div>
+    <div class="empty">You have no upcoming assignments yet.</div>
   {% endif %}
 </div>
 
 {% if past %}
 <div class="card">
-  <div class="sec-head"><span class="sec-ic ic-violet">🎖️</span><h3>Recently served</h3></div>
+  <div class="sec-head"><span class="sec-ic ic-violet">{{ ic.icon('check-shield') }}</span><h3>Recently served</h3></div>
   {% for a in past[:12] %}
   <div class="list-item">
     <div class="li-lead">
-      <span class="date-chip" style="background:#9aa3b5;">
+      <span class="date-chip" style="background:#b8a98f;">
         <span class="d-mon">{{ a['service_date']|mon }}</span>
         <span class="d-day">{{ a['service_date']|dayn }}</span>
       </span>

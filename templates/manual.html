@@ -1,16 +1,17 @@
 {% extends "base.html" %}
+{% import "_icons.html" as ic %}
 {% block title %}User Manual · HVGC LINEUP{% endblock %}
 {% block body %}
 <div class="page-head">
   <div>
-    <h1>📖 HVGC LINEUP — User Manual</h1>
+    <h1>{{ ic.icon('book') }} HVGC LINEUP — User Manual</h1>
     <p>Everything you need to navigate the site and use every feature.</p>
   </div>
   <div class="row-actions no-print">
     {% if pdf_exists %}
-    <a href="{{ url_for('user.manual_pdf') }}" class="btn">⬇ Download PDF</a>
+    <a href="{{ url_for('user.manual_pdf') }}" class="btn">{{ ic.icon('download') }} Download PDF</a>
     {% endif %}
-    <button onclick="window.print()" class="btn btn-ghost">🖨 Print</button>
+    <button onclick="window.print()" class="btn btn-ghost">{{ ic.icon('printer') }} Print</button>
   </div>
 </div>
 
@@ -130,7 +131,7 @@
   <p>Open <strong>My Availability</strong>. This is how schedulers know when to use
   you.</p>
   <ol>
-    <li>Choose <strong>✅ Available</strong> or <strong>⛔ Unavailable</strong>.</li>
+    <li>Choose <strong>Available</strong> or <strong>Unavailable</strong>.</li>
     <li>Pick a <strong>From date</strong>. To mark just one day, leave
         <strong>To date</strong> blank. To mark a stretch of days (for example a
         holiday), set a <strong>To date</strong> as well — every day in the range
@@ -149,7 +150,7 @@
   Click <strong>Open</strong> on any service to view its detail page, which shows:</p>
   <ul>
     <li>The date, start time, and location.</li>
-    <li>Any <strong>service notes</strong> and the <strong>📄 programme flow
+    <li>Any <strong>service notes</strong> and the <strong>programme flow
         document</strong> (click to open/download it) if the admin attached one.</li>
     <li>The full <strong>roster</strong> — who is serving in each role.</li>
   </ul>
@@ -184,7 +185,7 @@
 
 <div class="card manual" id="notes">
   <h2>9. Service notes</h2>
-  <p>On any service page, the <strong>📝 Notes</strong> panel lets anyone on the
+  <p>On any service page, the <strong>Notes</strong> panel lets anyone on the
   team leave a note about that service time (reminders, special instructions, etc.).
   Type your note and click <strong>Add note</strong>. You can delete notes you wrote.</p>
 </div>
@@ -195,7 +196,7 @@
   it's <strong>To do</strong> or <strong>Completed</strong>. Click
   <strong>Start</strong> to open a training, where you'll find:</p>
   <ul>
-    <li>A <strong>🎬 training video</strong> (if one is attached). <strong>Important:
+    <li>A <strong>training video</strong> (if one is attached). <strong>Important:
         the video automatically pauses the moment you switch tabs or leave the
         window</strong>, so you need to actually watch it.</li>
     <li>Written content / instructions.</li>

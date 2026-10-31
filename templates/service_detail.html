@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "_icons.html" as ic %}
 {% block title %}{{ service['title'] }} · HVGC LINEUP{% endblock %}
 {% block body %}
 <div class="page-head">
@@ -17,7 +18,7 @@
 
 {% if service['doc_filename'] %}
 <div class="card" style="border-color:#cedcbf;background:var(--green-bg);">
-  📄 <strong>Programme flow:</strong>
+  {{ ic.icon('document') }} <strong>Programme flow:</strong>
   <a href="{{ url_for('user.service_document', service_id=service['id']) }}" target="_blank" rel="noopener">{{ service['doc_original'] }}</a>
 </div>
 {% endif %}
@@ -42,7 +43,7 @@
         <input type="hidden" name="decision" value="declined">
         <button class="btn btn-sm btn-ghost">Decline</button>
       </form>
-      <a href="{{ url_for('user.service_calendar', service_id=service['id']) }}" class="btn btn-sm btn-ghost">📅 Add to calendar</a>
+      <a href="{{ url_for('user.service_calendar', service_id=service['id']) }}" class="btn btn-sm btn-ghost">{{ ic.icon('calendar') }} Add to calendar</a>
       <details class="inline-edit">
         <summary>Request swap</summary>
         <form method="post" action="{{ url_for('user.request_swap', assignment_id=a['id']) }}">
@@ -58,7 +59,7 @@
 
 <div class="grid grid-2">
   <div class="card">
-    <h3>👥 Roster</h3>
+    <h3>{{ ic.icon('users') }} Roster</h3>
     {% if roster %}
       {% for a in roster %}
       <div class="list-item">
@@ -73,12 +74,12 @@
     {% endif %}
     {% if swaps %}
     <div class="divider"></div>
-    <p class="muted" style="font-size:13px;">🔁 {{ swaps|length }} open swap request{{ 's' if swaps|length > 1 }} on this service.</p>
+    <p class="muted" style="font-size:13px;">{{ ic.icon('swap') }} {{ swaps|length }} open swap request{{ 's' if swaps|length > 1 }} on this service.</p>
     {% endif %}
   </div>
 
   <div class="card">
-    <h3>📝 Notes on this service</h3>
+    <h3>{{ ic.icon('note') }} Notes on this service</h3>
     <form method="post" action="{{ url_for('user.add_note', service_id=service['id']) }}">
       <textarea name="body" placeholder="Add a note about this service time…" required></textarea>
       <button class="btn btn-sm" style="margin-top:8px;">Add note</button>

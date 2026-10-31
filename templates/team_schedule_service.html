@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "_icons.html" as ic %}
 {% block title %}Staff {{ service['title'] }} · Team Schedule{% endblock %}
 {% block body %}
 <div class="page-head">
@@ -10,7 +11,7 @@
     {% if roster %}
     <form method="post" action="{{ url_for('user.team_remind_service', service_id=service['id']) }}"
           onsubmit="return confirm('Email a serving reminder to your team members assigned to this service?');">
-      <button class="btn">🔔 Remind my team</button>
+      <button class="btn">{{ ic.icon('bell') }} Remind my team</button>
     </form>
     {% endif %}
     <a href="{{ url_for('user.team_schedule') }}" class="btn btn-ghost">← All services</a>

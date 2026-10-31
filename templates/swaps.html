@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "_icons.html" as ic %}
 {% block title %}Role Swaps · HVGC LINEUP{% endblock %}
 {% block body %}
 <div class="page-head">
@@ -10,7 +11,7 @@
 
 <div class="grid grid-2">
   <div class="card">
-    <h3>🙋 Swaps you can cover</h3>
+    <h3>{{ ic.icon('hand') }} Swaps you can cover</h3>
     {% if coverable %}
       {% for sw in coverable %}
       <div class="list-item">
@@ -30,7 +31,7 @@
   </div>
 
   <div class="card">
-    <h3>📤 Your swap requests</h3>
+    <h3>{{ ic.icon('send') }} Your swap requests</h3>
     {% if my_requests %}
       {% for sw in my_requests %}
       <div class="list-item">

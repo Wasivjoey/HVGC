@@ -41,7 +41,7 @@
 
 {% if pending %}
 <div class="card" style="border-color:#ead3a6;background:var(--amber-bg);margin-top:18px;">
-  <h3>🆕 New sign-ups awaiting approval</h3>
+  <h3>{{ ic.icon('user-plus') }} New sign-ups awaiting approval</h3>
   {% for u in pending %}
   <div class="list-item">
     <div>
@@ -98,7 +98,7 @@
       </div>
       {% endfor %}
     {% else %}
-      <div class="empty">No pending swaps. 🎉</div>
+      <div class="empty">No pending swaps.</div>
     {% endif %}
   </div>
 </div>

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "_icons.html" as ic %}
 {% block title %}{{ u['name'] }} · Admin{% endblock %}
 {% block body %}
 <div class="page-head">
@@ -11,7 +12,7 @@
 
 {% if not u['approved'] %}
 <div class="card" style="border-color:#ead3a6;background:var(--amber-bg);">
-  <h3>🆕 Pending approval</h3>
+  <h3>Pending approval</h3>
   <p class="muted" style="font-size:13px;margin-top:0;">This account cannot sign in until you approve it.
     {% if not u['email_verified'] %} The email is not yet verified — you can wait for the user, or mark it verified manually below.{% endif %}</p>
   <form method="post" action="{{ url_for('admin.update_user_flags', user_id=u['id']) }}" class="inline-form">
@@ -65,7 +66,7 @@
 </div>
 
 <div class="card">
-  <h3>👥 Team &amp; tier</h3>
+  <h3>{{ ic.icon('users') }} Team &amp; tier</h3>
   <div class="row-actions" style="margin-bottom:6px;">
     {% for t in teams %}{% if t['id'] == u['team_id'] %}<span class="team-pill" style="background:{{ team_color(t['id']) }}">{{ t['name'] }}</span>{% endif %}{% endfor %}
     {% if u['is_admin'] %}<span class="badge badge-blue">Administrator</span>
@@ -94,17 +95,19 @@
 
 {% if is_full_admin and not u['is_admin'] %}
 <div class="card">
-  <h3>🎚️ Assistant admin access</h3>
+  <h3>{{ ic.icon('roles') }} Assistant admin access</h3>
   <p class="muted" style="font-size:13px;margin-top:0;">Make this volunteer an
     <strong>assistant</strong> by granting one or more admin features. They'll see only
     the tools you tick — nothing else. Untick everything to remove assistant access.
     (Managing admins/assistants stays with full administrators.)</p>
   <form method="post" action="{{ url_for('admin.set_admin_access', user_id=u['id']) }}">
+    {% set feat_icon = {'people':'users','teams':'teams','roles':'roles','trainings':'book','services':'calendar','availability':'grid','swaps':'swap','announcements':'megaphone','polls':'poll'} %}
     <div class="role-check-grid">
       {% for key, label, emoji in admin_feature_list %}
       <label class="role-check">
         <input type="checkbox" name="features" value="{{ key }}" {{ 'checked' if key in granted_features }}>
-        <span>{{ emoji }} {{ label }}</span>
+        <span class="rc-ic">{{ ic.icon(feat_icon.get(key, 'dashboard')) }}</span>
+        <span>{{ label }}</span>
       </label>
       {% endfor %}
     </div>
@@ -115,7 +118,7 @@
 
 <div class="grid grid-2">
   <div class="card">
-    <h3>✏️ Edit account details</h3>
+    <h3>{{ ic.icon('edit') }} Edit account details</h3>
     <form method="post" action="{{ url_for('admin.update_user_details', user_id=u['id']) }}">
       <label>Full name</label>
       <input type="text" name="name" value="{{ u['name'] }}" required>
@@ -128,7 +131,7 @@
   </div>
 
   <div class="card">
-    <h3>🔑 Reset password</h3>
+    <h3>{{ ic.icon('key') }} Reset password</h3>
     <p class="muted" style="font-size:13px;margin-top:0;">Sets a temporary password. The user
       is required to choose a new one at their next sign-in.
       {% if u['must_change_password'] %}<br><span class="badge badge-amber">Change pending at next login</span>{% endif %}
@@ -144,7 +147,7 @@
 
 <div class="grid grid-2">
   <div class="card">
-    <h3>🎛️ Roles</h3>
+    <h3>{{ ic.icon('roles') }} Roles</h3>
     <p class="muted" style="font-size:13px;">Assigning a role auto-queues its required training. The user can only be scheduled once training is complete.</p>
     {% for rv in role_view %}
     <div class="list-item">
@@ -171,9 +174,9 @@
 
   <div class="card">
     <div class="list-item" style="border:none;padding:0;margin-bottom:6px;">
-      <h3 style="margin:0;">🎓 Training</h3>
+      <h3 style="margin:0;">{{ ic.icon('training') }} Training</h3>
       <form method="post" action="{{ url_for('admin.remind_user_training', user_id=u['id']) }}" class="inline-form">
-        <button class="btn btn-sm btn-ghost">🔔 Send reminder</button>
+        <button class="btn btn-sm btn-ghost">{{ ic.icon('bell') }} Send reminder</button>
       </form>
     </div>
     {% for tv in training_view %}
@@ -204,7 +207,7 @@
 
 {% if u['id'] != current_user['id'] %}
 <div class="card" style="border:1px solid var(--red);">
-  <h3 style="color:var(--red);">⚠️ Danger zone</h3>
+  <h3 style="color:var(--red);">{{ ic.icon('alert') }} Danger zone</h3>
   <p class="muted" style="font-size:13px;margin-top:0;">Permanently delete this account and
     everything tied to it — roles, training records, schedule assignments, availability,
     notifications and swap requests. This cannot be undone.</p>
