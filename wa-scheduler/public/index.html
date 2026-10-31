@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>WA Scheduler</title>
+  <link rel="stylesheet" href="/assets/styles.css" />
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand"><span class="dot" id="statusDot"></span> WA Scheduler</div>
+    <div class="row">
+      <select id="accountSelect" style="min-width:160px"></select>
+      <button class="ghost small" id="newAccountBtn">+ Account</button>
+      <button class="ghost small" id="logoutBtn">Sign out</button>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="banner">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" />
+        <path d="M12 9v4" /><path d="M12 17h.01" />
+      </svg>
+      <span>This links your own WhatsApp via WhatsApp Web (unofficial). Automated posting is
+      against WhatsApp's Terms of Service and heavy use can get a number banned. Keep volume
+      low and human-like.</span>
+    </div>
+
+    <div class="grid two">
+      <!-- Left: connection + compose -->
+      <div style="display:grid; gap:16px;">
+        <div class="card" id="connectionCard">
+          <h2>Connection</h2>
+          <div id="connectionBody"><p class="muted">Loading…</p></div>
+        </div>
+
+        <div class="card" id="composeCard">
+          <h2>Schedule a post</h2>
+          <form id="composeForm">
+            <label>Message
+              <textarea id="body" placeholder="What do you want to post?"></textarea>
+            </label>
+            <label>Attachment (optional)
+              <input type="file" id="media" />
+            </label>
+            <label>Send at (your local time)
+              <input type="datetime-local" id="runAt" required />
+            </label>
+            <label>Repeat
+              <select id="repeat">
+                <option value="none">Once</option>
+                <option value="daily">Every day</option>
+                <option value="weekly">Every week</option>
+              </select>
+            </label>
+            <label>Groups
+              <div class="group-list" id="groupList"><p class="muted">Connect WhatsApp to load groups.</p></div>
+            </label>
+            <div class="row spread">
+              <span class="muted" id="composeHint"></span>
+              <button type="submit" id="scheduleBtn">Schedule</button>
+            </div>
+            <p class="error" id="composeErr" hidden></p>
+          </form>
+        </div>
+      </div>
+
+      <!-- Right: scheduled + history -->
+      <div class="card">
+        <div class="row spread">
+          <h2>Posts</h2>
+          <button class="ghost small" id="refreshPostsBtn">Refresh</button>
+        </div>
+        <div id="postList"><p class="empty">No posts yet.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/assets/app.js"></script>
+</body>
+</html>
