@@ -148,8 +148,11 @@ def create_app():
     @app.context_processor
     def inject_integrations():
         # URL of the external WA Scheduler app (WhatsApp group post scheduler).
-        # When unset the nav link is hidden, so Lineup runs fine without it.
-        return {"wa_scheduler_url": os.environ.get("WA_SCHEDULER_URL", "").strip()}
+        # Defaults to the scheduler's local dev address so the admin sidebar link
+        # appears out of the box; override WA_SCHEDULER_URL for other hosts, or
+        # set it to empty to hide the link entirely.
+        url = os.environ.get("WA_SCHEDULER_URL", "http://localhost:3000").strip()
+        return {"wa_scheduler_url": url}
 
     @app.context_processor
     def inject_notifications():
