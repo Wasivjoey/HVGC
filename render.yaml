@@ -33,14 +33,15 @@ services:
         value: "3.12.7"
 
       # ---- WA Scheduler (WhatsApp group post scheduler) ----
-      # URL the admin sidebar "WA Scheduler" link points to. A relative path
-      # keeps it on the same host as Lineup, so it follows the custom domain.
-      # NOTE: this only sets the link target. For "/wa" to actually serve the
-      # scheduler you must route it there — e.g. deploy the Node app as a
-      # separate service and reverse-proxy /wa to it, or give it its own
-      # subdomain and set an absolute https URL here instead. Set empty to hide.
+      # URL the admin sidebar "WA Scheduler" link points to. This blueprint
+      # deploys the scheduler as its own service (hvgc-wa-scheduler, below), so
+      # point the link at that service's public URL. Render's default domain is
+      # <service-name>.onrender.com; if that name is already taken Render appends
+      # a random suffix — update this value to the real URL after the first
+      # deploy (Dashboard -> hvgc-wa-scheduler -> the https:// link at the top).
+      # Set empty to hide the sidebar link.
       - key: WA_SCHEDULER_URL
-        value: "/wa"
+        value: "https://hvgc-wa-scheduler.onrender.com"
 
       # Uploaded avatars & programme documents are stored IN THE DATABASE, so
       # they survive every deploy on the free plan — no persistent disk needed.
@@ -118,3 +119,45 @@ services:
     #   name: lineup-data
     #   mountPath: /var/data
     #   sizeGB: 1
+
+  # ---- WA Scheduler: Node + Baileys WhatsApp group post scheduler ----
+  # A long-running always-on service. It MUST NOT sleep: the scheduler polls
+  # for due posts in-process, so an idle/sleeping free instance would miss
+  # them. It also needs a persistent disk — the SQLite DB, the WhatsApp login
+  # (Baileys auth), and uploaded media all live on disk, and without the disk
+  # every deploy wipes them (you'd re-scan the QR and lose scheduled posts).
+  # NOTE: automating WhatsApp via Baileys is against WhatsApp's Terms of
+  # Service and can get the number banned. Keep volume low and human-like.
+  - type: web
+    name: hvgc-wa-scheduler
+    runtime: node
+    plan: starter         # always-on; do NOT use 'free' (it sleeps -> missed posts)
+    region: oregon
+    branch: main
+    rootDir: wa-scheduler
+    buildCommand: "npm ci"
+    startCommand: "npm start"
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      # Pin the runtime: the app uses node:sqlite (DatabaseSync), which needs a
+      # recent Node. This matches the version it was built and tested against.
+      - key: NODE_VERSION
+        value: "26.13.0"
+      # Dashboard login password — set as a secret in the dashboard, do NOT
+      # commit it. Without it the app falls back to the insecure default.
+      - key: DASHBOARD_PASSWORD
+        sync: false
+      # Session cookie signing key — Render generates a strong random value.
+      - key: SESSION_SECRET
+        generateValue: true
+      # Point the data + uploads dirs at the persistent disk (mounted below) so
+      # the DB, WhatsApp sessions, and media survive restarts and deploys.
+      - key: DATA_DIR
+        value: /var/wa-data/data
+      - key: UPLOADS_DIR
+        value: /var/wa-data/uploads
+    disk:
+      name: wa-data
+      mountPath: /var/wa-data
+      sizeGB: 1

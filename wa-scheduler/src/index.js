@@ -11,6 +11,12 @@ const scheduler = require('./scheduler/scheduler');
 const wa = require('./whatsapp/manager');
 
 const app = express();
+// Behind Render's HTTPS proxy; trust it so secure/forwarded headers work.
+app.set('trust proxy', 1);
+
+// Public health check for the platform's uptime probe (no auth, no redirect).
+app.get('/healthz', (req, res) => res.json({ ok: true }));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(session({

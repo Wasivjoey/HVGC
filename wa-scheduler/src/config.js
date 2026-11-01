@@ -10,11 +10,21 @@ function num(value, fallback) {
   return Number.isFinite(n) ? n : fallback;
 }
 
+// DATA_DIR / UPLOADS_DIR let a host point these at a persistent disk (e.g. a
+// Render disk) so the SQLite DB, WhatsApp sessions, and uploaded media survive
+// restarts and deploys. Default to folders inside the project for local dev.
+const dataDir = process.env.DATA_DIR
+  ? path.resolve(process.env.DATA_DIR)
+  : path.join(ROOT, 'data');
+const uploadsDir = process.env.UPLOADS_DIR
+  ? path.resolve(process.env.UPLOADS_DIR)
+  : path.join(ROOT, 'uploads');
+
 const config = {
   root: ROOT,
-  dataDir: path.join(ROOT, 'data'),
-  uploadsDir: path.join(ROOT, 'uploads'),
-  dbPath: path.join(ROOT, 'data', 'app.db'),
+  dataDir,
+  uploadsDir,
+  dbPath: path.join(dataDir, 'app.db'),
 
   port: num(process.env.PORT, 3000),
   dashboardPassword: process.env.DASHBOARD_PASSWORD || 'change-me',
