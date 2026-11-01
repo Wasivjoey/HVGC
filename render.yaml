@@ -32,16 +32,6 @@ services:
       - key: PYTHON_VERSION
         value: "3.12.7"
 
-      # ---- WA Scheduler (WhatsApp group post scheduler) ----
-      # URL the admin sidebar "WA Scheduler" link points to. A relative path
-      # keeps it on the same host as Lineup, so it follows the custom domain.
-      # NOTE: this only sets the link target. For "/wa" to actually serve the
-      # scheduler you must route it there — e.g. deploy the Node app as a
-      # separate service and reverse-proxy /wa to it, or give it its own
-      # subdomain and set an absolute https URL here instead. Set empty to hide.
-      - key: WA_SCHEDULER_URL
-        value: "/wa"
-
       # Uploaded avatars & programme documents are stored IN THE DATABASE, so
       # they survive every deploy on the free plan — no persistent disk needed.
       # UPLOAD_PATH is only a scratch dir for processing and can stay unset.
