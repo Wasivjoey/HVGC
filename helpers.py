@@ -686,20 +686,61 @@ def send_training_reminder(conn, user_id):
     return len(items)
 
 
+def send_web_push(conn, user_id, body, link=None, title="HVGC LINEUP"):
+    """Best-effort browser push to every device a user has enabled. Prunes
+    subscriptions the push service reports as gone (404/410). Never raises, so a
+    push problem can't break the in-app notification. Caller commits.
+    shortcut: sends inline, one HTTPS POST per subscription; fine for one church,
+    but a large install should move push (and email) dispatch to a background job.
+    """
+    cfg = current_app.config
+    if not cfg.get("PUSH_ENABLED"):
+        return
+    subs = conn.execute(
+        "SELECT id, endpoint, p256dh, auth FROM push_subscriptions WHERE user_id = ?",
+        (user_id,),
+    ).fetchall()
+    if not subs:
+        return
+    import json
+    from pywebpush import webpush, WebPushException
+    payload = json.dumps({"title": title, "body": body, "url": link or "/"})
+    for s in subs:
+        try:
+            webpush(
+                subscription_info={"endpoint": s["endpoint"],
+                                   "keys": {"p256dh": s["p256dh"], "auth": s["auth"]}},
+                data=payload,
+                vapid_private_key=cfg["VAPID_PRIVATE_KEY"],
+                vapid_claims={"sub": cfg["VAPID_SUBJECT"]},
+                timeout=10,
+            )
+        except WebPushException as exc:
+            code = getattr(getattr(exc, "response", None), "status_code", None)
+            if code in (404, 410):  # subscription expired/unsubscribed — drop it
+                conn.execute("DELETE FROM push_subscriptions WHERE id = ?", (s["id"],))
+            else:
+                current_app.logger.warning("web push failed (user %s): %s", user_id, exc)
+        except Exception as exc:  # network/library error — never break notify()
+            current_app.logger.warning("web push error (user %s): %s", user_id, exc)
+
+
 def notify(conn, user_id, body, link=None, email=False, subject=None,
            attachments=None, email_extra=None):
     """Queue an in-app notification for a user. Caller commits.
 
-    When ``email`` is set, also send the message to the user's email address
+    Also fires a browser push to the user's enabled devices (best-effort). When
+    ``email`` is set, additionally send the message to the user's email address
     (used for high-priority events). ``email_extra`` adds an email-only line
-    (e.g. a calendar link) and ``attachments`` are passed to send_email. Email
-    failures never block the in-app notification.
+    (e.g. a calendar link) and ``attachments`` are passed to send_email. Push and
+    email failures never block the in-app notification.
     """
     conn.execute(
         "INSERT INTO notifications (user_id, body, link, is_read, created_at)"
         " VALUES (?, ?, ?, 0, ?)",
         (user_id, body, link, now_iso()),
     )
+    send_web_push(conn, user_id, body, link)
     if email:
         row = conn.execute(
             "SELECT name, email, email_opt_in FROM users WHERE id = ?", (user_id,)

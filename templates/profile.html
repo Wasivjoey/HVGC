@@ -53,6 +53,14 @@
     </form>
     <div class="divider"></div>
     <a href="{{ url_for('user.change_password') }}" class="btn btn-ghost btn-sm">{{ ic.icon('key') }} Change password</a>
+    {% if push_enabled %}
+    <div class="divider"></div>
+    <p class="muted" style="font-size:13px;margin:0 0 9px;">Get a browser notification the moment
+      something needs you — new assignments, reminders, swaps and announcements. Turn it on once per
+      device. On iPhone, add this site to your Home Screen first.</p>
+    <button type="button" id="push-enable-btn" class="btn btn-ghost btn-sm"
+            onclick="hvgcEnablePush(this)">{{ ic.icon('bell') }} Enable notifications on this device</button>
+    {% endif %}
   </div>
 
   <div class="card">

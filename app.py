@@ -76,6 +76,20 @@ def create_app():
     # Email is on when either transport is configured.
     app.config["EMAIL_ENABLED"] = bool(app.config["BREVO_API_KEY"] or app.config["SMTP_HOST"])
 
+    # Browser push notifications (Web Push / VAPID). Needs a key pair, generated
+    # once with:  vapid --gen   (writes private_key.pem/public_key.pem), then
+    # vapid --applicationServerKey  (prints the browser key). The `vapid` command
+    # ships with pywebpush.
+    # Set VAPID_PRIVATE_KEY to the private PEM contents, VAPID_PUBLIC_KEY to the
+    # browser (application server) key, and VAPID_SUBJECT to a mailto: you own.
+    # Without both keys, push is simply disabled and the app skips it.
+    app.config["VAPID_PUBLIC_KEY"] = os.environ.get("VAPID_PUBLIC_KEY")
+    app.config["VAPID_PRIVATE_KEY"] = os.environ.get("VAPID_PRIVATE_KEY")
+    app.config["VAPID_SUBJECT"] = os.environ.get("VAPID_SUBJECT", "mailto:no-reply@hvgclineup.local")
+    app.config["PUSH_ENABLED"] = bool(
+        app.config["VAPID_PUBLIC_KEY"] and app.config["VAPID_PRIVATE_KEY"]
+    )
+
     # Optional AI auto-scheduler. The rules-based auto-scheduler always works;
     # when an Anthropic API key is present the "AI assistant" option becomes
     # available, using Claude to balance the roster more intelligently.
@@ -137,6 +151,42 @@ def create_app():
     @app.context_processor
     def inject_user():
         return {"current_user": current_user()}
+
+    @app.context_processor
+    def inject_push():
+        return {"push_enabled": app.config.get("PUSH_ENABLED", False),
+                "vapid_public_key": app.config.get("VAPID_PUBLIC_KEY") or ""}
+
+    @app.route("/sw.js")
+    def service_worker():
+        """Serve the push service worker from the site root so its scope is '/'."""
+        from flask import send_from_directory
+        resp = send_from_directory(app.static_folder, "sw.js",
+                                   mimetype="application/javascript")
+        resp.headers["Service-Worker-Allowed"] = "/"
+        resp.headers["Cache-Control"] = "no-cache"
+        return resp
+
+    @app.route("/manifest.webmanifest")
+    def web_manifest():
+        """Minimal PWA manifest so the app can be installed — required for push
+        on iOS (add to Home Screen), and nice-to-have elsewhere."""
+        from flask import jsonify
+        return jsonify({
+            "name": "HVGC LINEUP",
+            "short_name": "LINEUP",
+            "start_url": "/dashboard",
+            "scope": "/",
+            "display": "standalone",
+            "background_color": "#f4ede1",
+            "theme_color": "#241c16",
+            "icons": [{
+                "src": url_for("static", filename="logo.png"),
+                "sizes": "any",
+                "type": "image/png",
+                "purpose": "any maskable",
+            }],
+        })
 
     @app.context_processor
     def inject_admin_access():

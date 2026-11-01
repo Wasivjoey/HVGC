@@ -101,6 +101,21 @@ services:
       # - key: AUTOSCHEDULE_MODEL
       #   value: claude-sonnet-5
 
+      # ---- Optional browser push notifications (Web Push / VAPID) ----
+      # Generate a key pair once (locally; the `vapid` command ships with pywebpush):
+      #   vapid --gen
+      #   vapid --applicationServerKey   # prints the browser key
+      # Then set VAPID_PRIVATE_KEY to the contents of private_key.pem, and
+      # VAPID_PUBLIC_KEY to the application-server (browser) key. Without both,
+      # push is disabled. Works over HTTPS (all Render plans); iOS users must
+      # add the site to their Home Screen first.
+      # - key: VAPID_PUBLIC_KEY
+      #   sync: false
+      # - key: VAPID_PRIVATE_KEY
+      #   sync: false
+      # - key: VAPID_SUBJECT
+      #   value: mailto:admin@yourchurch.org
+
     # ---- Optional persistent disk for uploaded files (paid plans only) ----
     # Uncomment this AND the UPLOAD_PATH env var above to keep uploaded
     # documents/avatars across deploys. mountPath must be the parent of UPLOAD_PATH.

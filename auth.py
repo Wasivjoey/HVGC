@@ -16,7 +16,7 @@ from flask import (
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from db import get_db, now_iso, execute_returning_id, default_team_id, local_datetime
-from helpers import send_email, build_email, rate_limited
+from helpers import send_email, build_email, rate_limited, current_user
 
 bp = Blueprint("auth", __name__)
 
@@ -40,7 +40,7 @@ def _send_verification(user_id, name, email, token):
 
 @bp.route("/register", methods=["GET", "POST"])
 def register():
-    if session.get("user_id"):
+    if current_user():
         return redirect(url_for("user.dashboard"))
     if request.method == "POST":
         name = request.form.get("name", "").strip()
@@ -165,7 +165,7 @@ def resend_verification():
 
 @bp.route("/forgot", methods=["GET", "POST"])
 def forgot_password():
-    if session.get("user_id"):
+    if current_user():
         return redirect(url_for("user.dashboard"))
     dev_link = None
     if request.method == "POST":
@@ -247,7 +247,7 @@ def reset_password(token):
 
 @bp.route("/login", methods=["GET", "POST"])
 def login():
-    if session.get("user_id"):
+    if current_user():
         return redirect(url_for("user.dashboard"))
     if request.method == "POST":
         identifier = request.form.get("identifier", "").strip().lower()

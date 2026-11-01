@@ -139,6 +139,24 @@ Set these environment variables on the platform:
 | `SMTP_PORT`     | Mail server port                                 | `587`                            |
 | `SMTP_USER` / `SMTP_PASSWORD` | Mail account credentials           | —                                |
 | `SMTP_FROM`     | From address on verification emails              | `no-reply@yourchurch.org`        |
+| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | Web Push keys — when both set, browser push notifications are enabled | see below |
+| `VAPID_SUBJECT` | Contact `mailto:` sent with each push (optional) | `mailto:admin@yourchurch.org`    |
+
+> **Browser push notifications (optional):** when `VAPID_PUBLIC_KEY` and
+> `VAPID_PRIVATE_KEY` are both set, volunteers can turn on push notifications from
+> their **Profile** page and get a browser notification for every in-app
+> notification (assignments, reminders, swaps, announcements). Generate the keys
+> once with the `vapid` command that ships with `pywebpush`:
+>
+> ```bash
+> vapid --gen                   # writes private_key.pem / public_key.pem
+> vapid --applicationServerKey  # prints the VAPID_PUBLIC_KEY value
+> ```
+>
+> Set `VAPID_PRIVATE_KEY` to the contents of `private_key.pem` and
+> `VAPID_PUBLIC_KEY` to the printed application-server key. Push needs HTTPS (it
+> works on all Render plans); **iOS** users must add the site to their Home Screen
+> first. Without the keys, push is simply disabled.
 
 > **Email verification & approval:** new sign-ups must verify their email and then
 > be approved by an administrator before they can sign in. If `SMTP_HOST` is unset

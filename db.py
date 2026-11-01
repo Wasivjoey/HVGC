@@ -227,6 +227,17 @@ CREATE TABLE IF NOT EXISTS notifications (
     is_read    INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL
 );
+
+-- A browser Web Push subscription (one row per device/browser a user enables).
+-- endpoint is the push service URL; p256dh/auth are the client's encryption keys.
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    endpoint   TEXT NOT NULL UNIQUE,
+    p256dh     TEXT NOT NULL,
+    auth       TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
 """
 
 

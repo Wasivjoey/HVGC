@@ -176,6 +176,45 @@ def toggle_volunteer_menu():
     return redirect(request.referrer or url_for("admin.dashboard"))
 
 
+@bp.route("/push/subscribe", methods=["POST"])
+@login_required
+def push_subscribe():
+    """Store (or refresh) this browser's Web Push subscription for the user."""
+    user = current_user()
+    data = request.get_json(silent=True) or {}
+    endpoint = data.get("endpoint")
+    keys = data.get("keys") or {}
+    p256dh, auth = keys.get("p256dh"), keys.get("auth")
+    if not (endpoint and p256dh and auth):
+        return ("", 400)
+    conn = get_db()
+    # One row per endpoint; re-subscribing updates keys and reassigns the owner.
+    conn.execute(
+        "INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth, created_at)"
+        " VALUES (?, ?, ?, ?, ?)"
+        " ON CONFLICT (endpoint) DO UPDATE SET user_id = excluded.user_id,"
+        " p256dh = excluded.p256dh, auth = excluded.auth",
+        (user["id"], endpoint, p256dh, auth, now_iso()),
+    )
+    conn.commit()
+    conn.close()
+    return ("", 204)
+
+
+@bp.route("/push/unsubscribe", methods=["POST"])
+@login_required
+def push_unsubscribe():
+    """Forget this browser's subscription (user turned notifications off)."""
+    data = request.get_json(silent=True) or {}
+    endpoint = data.get("endpoint")
+    if endpoint:
+        conn = get_db()
+        conn.execute("DELETE FROM push_subscriptions WHERE endpoint = ?", (endpoint,))
+        conn.commit()
+        conn.close()
+    return ("", 204)
+
+
 @bp.route("/notifications")
 @login_required
 def notifications():
