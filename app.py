@@ -172,6 +172,7 @@ def create_app():
         """Minimal PWA manifest so the app can be installed — required for push
         on iOS (add to Home Screen), and nice-to-have elsewhere."""
         from flask import jsonify
+        icon_src = url_for("static", filename="logo.png")
         return jsonify({
             "name": "HVGC LINEUP",
             "short_name": "LINEUP",
@@ -180,12 +181,15 @@ def create_app():
             "display": "standalone",
             "background_color": "#f4ede1",
             "theme_color": "#241c16",
-            "icons": [{
-                "src": url_for("static", filename="logo.png"),
-                "sizes": "any",
-                "type": "image/png",
-                "purpose": "any maskable",
-            }],
+            # One 1024x1024 source file, declared at the explicit sizes Android/
+            # Chrome look for (they ignore "any" for a raster PNG and downscale
+            # from the largest). purpose "any" only — "maskable" would crop the
+            # full-frame square logo.
+            "icons": [
+                {"src": icon_src, "sizes": "192x192", "type": "image/png", "purpose": "any"},
+                {"src": icon_src, "sizes": "512x512", "type": "image/png", "purpose": "any"},
+                {"src": icon_src, "sizes": "1024x1024", "type": "image/png", "purpose": "any"},
+            ],
         })
 
     @app.context_processor
